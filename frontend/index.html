@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Digitral multi-number dashboard</title>
+<style>
+  :root { --bg:#0f172a; --card:#1e293b; --fg:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --danger:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--fg); }
+  header { padding:16px 24px; background:#0b1220; display:flex; justify-content:space-between; align-items:center; }
+  header h1 { margin:0; font-size:18px; }
+  main { padding:24px; max-width:1100px; margin:0 auto; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+  .card { background:var(--card); border-radius:12px; padding:16px; position:relative; }
+  .card h3 { margin:0 0 4px; font-size:16px; }
+  .card .msisdn { color:var(--muted); font-size:13px; margin-bottom:12px; }
+  .row { display:flex; justify-content:space-between; font-size:14px; margin:4px 0; }
+  .row .k { color:var(--muted); }
+  .err { color:var(--danger); font-size:13px; margin-top:8px; }
+  .ok { color:#4ade80; }
+  button { background:var(--accent); color:#0b1220; border:0; border-radius:8px; padding:8px 12px; cursor:pointer; font-weight:600; }
+  button.danger { background:var(--danger); color:#fff; }
+  button.ghost { background:transparent; color:var(--muted); border:1px solid #334155; }
+  .modal-back { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; }
+  .modal-back.show { display:flex; }
+  .modal { background:var(--card); border-radius:12px; padding:20px; width:360px; max-width:90vw; }
+  .modal h2 { margin:0 0 12px; font-size:16px; }
+  .modal input, .modal select { width:100%; padding:8px; margin:6px 0 12px; border-radius:6px; border:1px solid #334155; background:#0f172a; color:var(--fg); }
+  .status { font-size:12px; color:var(--muted); margin-top:8px; }
+  .toolbar { margin-bottom:16px; display:flex; gap:8px; align-items:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Digitral multi-number dashboard</h1>
+  <span id="status" class="status">connecting…</span>
+</header>
+<main>
+  <div class="toolbar">
+    <button id="addBtn">+ Tambah nomor</button>
+    <button id="refreshBtn" class="ghost">Refresh now</button>
+  </div>
+  <div id="grid" class="grid"></div>
+</main>
+
+<div id="modal" class="modal-back">
+  <div class="modal">
+    <h2>Tambah nomor</h2>
+    <label>Provider</label>
+    <select id="prov"></select>
+    <label>Nomor (62…)</label>
+    <input id="msisdn" placeholder="628xxxxxxxxxx">
+    <button id="sendOtp">Kirim OTP</button>
+    <div id="otpStep" style="display:none">
+      <label>Kode OTP</label>
+      <input id="otp" placeholder="123456">
+      <button id="verifyOtp">Verifikasi</button>
+    </div>
+    <div id="modalMsg" class="status"></div>
+    <button id="cancelBtn" class="ghost" style="margin-top:8px">Batal</button>
+  </div>
+</div>
+
+<script>
+const API = "";
+let pendingId = null;
+
+async function api(path, opts={}) {
+  const r = await fetch(API + path, {headers:{"Content-Type":"application/json"}, ...opts});
+  const t = await r.text();
+  let j; try { j = JSON.parse(t); } catch { j = {raw:t}; }
+  if (!r.ok) throw new Error(j.detail || j.error || r.statusText);
+  return j;
+}
+
+function fmtQuota(d) {
+  if (!d) return "-";
+  const r = d.summary?.data?.remainingquota;
+  const u = d.summary?.data?.quotaunit || "KB";
+  if (r == null) return "-";
+  const kb = Number(r);
+  if (u.toUpperCase()==="KB") {
+    if (kb >= 1024*1024) return (kb/1024/1024).toFixed(2)+" GB";
+    if (kb >= 1024) return (kb/1024).toFixed(1)+" MB";
+    return kb+" KB";
+  }
+  return r+" "+u;
+}
+
+function renderNumber(n) {
+  const d = n.data || {};
+  const pulsa = d.prepaidinfo?.balance ?? "-";
+  const aktif = d.prepaidinfo?.cardactiveuntil ?? "-";
+  const grace = d.prepaidinfo?.graceperioduntil;
+  const bonstri = d.bonstriDetails?.totalPoints;
+  return `
+    <div class="card">
+      <h3>${n.label || n.provider}</h3>
+      <div class="msisdn">${n.msisdn}</div>
+      ${n.ok ? `
+        <div class="row"><span class="k">Pulsa</span><span>Rp ${pulsa}</span></div>
+        <div class="row"><span class="k">Kuota sisa</span><span>${fmtQuota(d)}</span></div>
+        <div class="row"><span class="k">Masa aktif</span><span>${aktif}</span></div>
+        ${grace ? `<div class="row"><span class="k">Grace s/d</span><span>${grace}</span></div>` : ""}
+        ${bonstri != null ? `<div class="row"><span class="k">Bonstri</span><span>${bonstri} pts</span></div>` : ""}
+      ` : `<div class="err">${n.error || "no data"}</div>`}
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="ghost" onclick="refreshOne('${n.id}')">Refresh</button>
+        <button class="danger" onclick="removeNum('${n.id}')">Hapus</button>
+      </div>
+    </div>`;
+}
+
+async function loadNumbers() {
+  const j = await api("/numbers");
+  const grid = document.getElementById("grid");
+  // fetch balance per number in parallel
+  const enriched = await Promise.all(j.numbers.map(async n => {
+    try { const b = await api(`/numbers/${n.id}/balance`); return {...n, ok:true, data:b.balance}; }
+    catch (e) { return {...n, ok:false, error:e.message}; }
+  }));
+  grid.innerHTML = enriched.map(renderNumber).join("") || "<p class='status'>Belum ada nomor. Tambah dengan tombol +.</p>";
+}
+
+async function refreshOne(id) {
+  await loadNumbers();
+}
+
+async function removeNum(id) {
+  if (!confirm("Hapus nomor ini dari dashboard?")) return;
+  await api(`/numbers/${id}`, {method:"DELETE"});
+  await loadNumbers();
+}
+
+// modal
+const modal = document.getElementById("modal");
+document.getElementById("addBtn").onclick = async () => {
+  const provs = await api("/providers");
+  const sel = document.getElementById("prov");
+  sel.innerHTML = provs.filter(p=>p.available).map(p=>`<option value="${p.id}">${p.label}</option>`).join("");
+  document.getElementById("msisdn").value = "";
+  document.getElementById("otp").value = "";
+  document.getElementById("otpStep").style.display = "none";
+  document.getElementById("modalMsg").textContent = "";
+  pendingId = null;
+  modal.classList.add("show");
+};
+document.getElementById("cancelBtn").onclick = () => modal.classList.remove("show");
+
+document.getElementById("sendOtp").onclick = async () => {
+  const msisdn = document.getElementById("msisdn").value.trim();
+  const provider = document.getElementById("prov").value;
+  const msg = document.getElementById("modalMsg");
+  try {
+    const r = await api("/numbers", {method:"POST", body:JSON.stringify({provider, msisdn})});
+    pendingId = r.id;
+    msg.textContent = "OTP terkirim. Masukkan kode.";
+    document.getElementById("otpStep").style.display = "block";
+  } catch (e) { msg.textContent = "Gagal: "+e.message; }
+};
+
+document.getElementById("verifyOtp").onclick = async () => {
+  const otp = document.getElementById("otp").value.trim();
+  const msg = document.getElementById("modalMsg");
+  try {
+    await api(`/numbers/${pendingId}/verify`, {method:"POST", body:JSON.stringify({otp})});
+    msg.textContent = "Terverifikasi ✓";
+    modal.classList.remove("show");
+    await loadNumbers();
+  } catch (e) { msg.textContent = "Gagal: "+e.message; }
+};
+
+document.getElementById("refreshBtn").onclick = loadNumbers;
+
+// SSE auto-refresh
+function connectStream() {
+  const es = new EventSource("/stream");
+  es.onmessage = e => {
+    try {
+      const p = JSON.parse(e.data);
+      if (p.numbers) {
+        const grid = document.getElementById("grid");
+        grid.innerHTML = p.numbers.map(renderNumber).join("") || "<p class='status'>Belum ada nomor.</p>";
+      }
+    } catch {}
+  };
+  es.onerror = () => { document.getElementById("status").textContent = "stream terputus, retry…"; };
+  es.onopen = () => { document.getElementById("status").textContent = "live"; };
+}
+connectStream();
+loadNumbers();
+</script>
+</body>
+</html>
+EOF
+mkdir -p /home/elixerwsl/yasin/reamobile/frontend && mv /home/elixerwsl/yasin/reamobile/frontend 2>/dev/null; mkdir -p /home/elixerwsl/yasin/reamobile/frontend && echo "dir ready"
