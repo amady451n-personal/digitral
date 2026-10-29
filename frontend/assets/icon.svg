@@ -14,5 +14,3 @@
     <polyline points="200,330 235,300 270,320 312,285"/>
   </g>
 </svg>
-EOF
-echo done

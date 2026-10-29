@@ -51,6 +51,7 @@
   .modal input, .modal select { width:100%; padding:10px; margin:6px 0 12px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:var(--fg); font-size:16px; }
   .status { font-size:12px; color:var(--muted); margin-top:8px; }
   .pending-box { margin-top:10px; padding:10px; background:#0f172a; border-radius:8px; }
+  .pending-box input { margin:6px 0; width:100%; padding:10px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:var(--fg); font-size:16px; }
   .pending-box input { margin:6px 0; }
   .actions { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
   .install-btn { display:none; }
@@ -94,6 +95,7 @@
 <script>
 const API = "";
 let pendingId = null;
+if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/sw.js").catch(()=>{}); }
 
 async function api(path, opts={}) {
   const r = await fetch(API + path, {headers:{"Content-Type":"application/json"}, ...opts});
@@ -114,8 +116,8 @@ async function withBusy(btn, fn) {
 
 function fmtQuota(d) {
   if (!d) return "-";
-  const r = d.summary?.data?.remainingquota;
-  const u = (d.summary?.data?.quotaunit || "KB").toUpperCase();
+  const r = d.quota;
+  const u = (d.unit || "KB").toUpperCase();
   if (r == null) return "-";
   const kb = Number(r);
   if (u === "KB") {
@@ -128,10 +130,10 @@ function fmtQuota(d) {
 
 function renderNumber(n) {
   const d = n.data || {};
-  const pulsa = d.prepaidinfo?.balance ?? "-";
-  const aktif = d.prepaidinfo?.cardactiveuntil ?? "-";
-  const grace = d.prepaidinfo?.graceperioduntil;
-  const bonstri = d.bonstriDetails?.totalPoints;
+  const pulsa = d.balance ?? "-";
+  const aktif = d.active_until ?? "-";
+  const grace = d.grace_until;
+  const bonstri = d.bonstri;
   const cls = "card provider-" + (n.provider || "");
   if (n.pending) {
     return `
@@ -336,5 +338,3 @@ document.getElementById("installBtn").onclick = async () => {
 </script>
 </body>
 </html>
-EOF
-echo done
