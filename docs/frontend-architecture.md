@@ -84,5 +84,3 @@ docker compose down -v         # hentikan + hapus data/vault
 - `HOST` default `0.0.0.0` di container (server.py baca env `HOST`/`PORT`).
 - Healthcheck via `urllib` ke `/health`.
 - `DEVICE_PROFILE=/app/profile.json` (mount read-only) untuk seed profil perangkat asli.
-EOF
-echo done
