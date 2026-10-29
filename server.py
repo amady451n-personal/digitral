@@ -38,8 +38,10 @@ import bima_balance as bm
 
 HOME = Path(os.environ.get("FRONTEND_HOME", str(Path.home() / ".bima-frontend")))
 POLL_SEC = float(os.environ.get("POLL_SEC", "60"))
+PENDING_TTL_SEC = float(os.environ.get("PENDING_TTL_SEC", "300"))
 REGISTRY_FILE = HOME / "registry.json"
-VAULTS_DIR = HOME / "vaults"
+VAULTS_DIR = HOME   # vaults live at HOME/{provider}; matches CLI BIMA_HOME=/app/data/{provider}
+FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 
 # providers that are actually wired (constants verified). myXL/axisnet slots exist
 # in bima_balance (PROVIDER_MYXL/AXISNET) but are None until decompile-verified.
@@ -60,6 +62,7 @@ try:
     from fastapi import FastAPI, HTTPException
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import StreamingResponse, HTMLResponse, FileResponse
+    from fastapi.staticfiles import StaticFiles
     from pydantic import BaseModel
 except ImportError as e:
     raise SystemExit("Missing dependency: pip install fastapi uvicorn") from e
@@ -68,6 +71,18 @@ app = FastAPI(title="Digitral multi-number backend")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
+
+# static assets for PWA
+if (FRONTEND_DIR / "assets").is_dir():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIR / "assets")), name="assets")
+
+@app.get("/manifest.json")
+def manifest():
+    return FileResponse(str(FRONTEND_DIR / "manifest.json"), media_type="application/manifest+json")
+
+@app.get("/sw.js")
+def service_worker():
+    return FileResponse(str(FRONTEND_DIR / "sw.js"), media_type="application/javascript")
 
 # ---------- registry (which numbers this dashboard owns) ----------
 def _load_registry() -> Dict[str, Any]:
@@ -84,7 +99,16 @@ def _save_registry(reg: Dict[str, Any]):
     REGISTRY_FILE.write_text(json.dumps(reg, indent=2))
 
 
+def _purge_pending():
+    now = time.time()
+    expired = [nid for nid, p in _pending.items()
+               if now - p.get("created_at", now) > PENDING_TTL_SEC]
+    for nid in expired:
+        _pending.pop(nid, None)
+
+
 def _find(num_id: str) -> Optional[Dict[str, Any]]:
+    _purge_pending()
     for n in _load_registry()["numbers"]:
         if n["id"] == num_id:
             return n
@@ -111,14 +135,15 @@ def _seed_vault(provider: str):
 _pending: Dict[str, Dict[str, Any]] = {}   # number_id -> {provider, msisdn, transid, created_at}
 
 
-def _client(provider: str, msisdn: str, vault: Optional[bm.Vault] = None):
+def _client(provider: str, msisdn: str, vault: Optional[bm.Vault] = None,
+            action: str = "register"):
     if provider not in PROVIDERS or PROVIDERS[provider]["cfg"] is None:
         raise HTTPException(400, f"provider not available: {provider}")
     p = PROVIDERS[provider]
     if vault is None:
         vault = bm.Vault(p["vault_dir"])
     http = bm.Http(p["cfg"]["base_default"], bm.DEFAULT_UA, 45.0)
-    return bm.BimaClient(http, vault, msisdn, cfg=p["cfg"]), vault
+    return bm.BimaClient(http, vault, msisdn, action=action, cfg=p["cfg"]), vault
 
 
 def _fetch_balance(provider: str, msisdn: str) -> Dict[str, Any]:
@@ -161,8 +186,30 @@ def providers():
             for k, v in PROVIDERS.items()]
 
 
+@app.post("/numbers/{num_id}/resend")
+def resend(num_id: str):
+    _purge_pending()
+    p = _pending.get(num_id)
+    if not p:
+        raise HTTPException(400, "no pending OTP for this number (re-add)")
+    vault = _seed_vault(p["provider"])
+    client, _ = _client(p["provider"], p["msisdn"], vault)
+    try:
+        client.request_guest_token()
+        transid = client.send_otp()
+    except SystemExit as e:
+        raise HTTPException(502, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"{type(e).__name__}: {e}")
+    _pending[num_id]["transid"] = transid
+    _pending[num_id]["created_at"] = time.time()
+    return {"id": num_id, "msisdn": p["msisdn"], "provider": p["provider"],
+            "transid": transid, "status": "otp_resent", "otp_required": True}
+
+
 @app.get("/numbers")
-def list_numbers():
+def list_numbers(include_pending: bool = False):
+    _purge_pending()
     reg = _load_registry()
     out = []
     for n in reg["numbers"]:
@@ -172,7 +219,18 @@ def list_numbers():
             "label": PROVIDERS.get(n["provider"], {}).get("label", n["provider"]),
             "msisdn": n["msisdn"],
             "added_at": n.get("added_at"),
+            "pending": False,
         })
+    if include_pending:
+        for pid, p in _pending.items():
+            out.append({
+                "id": pid,
+                "provider": p["provider"],
+                "label": PROVIDERS.get(p["provider"], {}).get("label", p["provider"]),
+                "msisdn": p["msisdn"],
+                "added_at": p.get("created_at"),
+                "pending": True,
+            })
     return {"numbers": out}
 
 
@@ -180,17 +238,21 @@ def list_numbers():
 def add_number(body: AddNumber):
     if body.provider not in PROVIDERS or PROVIDERS[body.provider]["cfg"] is None:
         raise HTTPException(400, "unknown/unavailable provider")
+    _purge_pending()
     msisdn = bm.normalize_msisdn(body.msisdn)
     reg = _load_registry()
     for n in reg["numbers"]:
         if n["provider"] == body.provider and n["msisdn"] == msisdn:
             raise HTTPException(409, "number already registered")
+
+    # existing pending for the same (provider, msisdn): re-send OTP instead of 409
+    existing_pending_id = None
     for pid, p in _pending.items():
         if p["provider"] == body.provider and p["msisdn"] == msisdn:
-            raise HTTPException(409, "number already pending OTP verification")
+            existing_pending_id = pid
+            break
 
     vault = _seed_vault(body.provider)
-    # reuse an already-valid session if present (no OTP needed)
     sess = vault.session(msisdn)
     if sess and sess.get("token"):
         nid = uuid.uuid4().hex[:12]
@@ -204,11 +266,20 @@ def add_number(body: AddNumber):
 
     client, _ = _client(body.provider, msisdn, vault)
     try:
+        client.request_guest_token()
         transid = client.send_otp()
     except SystemExit as e:
         raise HTTPException(502, str(e))
     except Exception as e:
         raise HTTPException(502, f"{type(e).__name__}: {e}")
+
+    if existing_pending_id:
+        nid = existing_pending_id
+        _pending[nid]["transid"] = transid
+        _pending[nid]["created_at"] = time.time()
+        return {"id": nid, "msisdn": msisdn, "provider": body.provider,
+                "transid": transid, "status": "otp_resent", "otp_required": True}
+
     nid = uuid.uuid4().hex[:12]
     _pending[nid] = {
         "provider": body.provider, "msisdn": msisdn,
@@ -220,9 +291,10 @@ def add_number(body: AddNumber):
 
 @app.post("/numbers/{num_id}/verify")
 def verify(num_id: str, body: VerifyOtp):
+    _purge_pending()
     p = _pending.get(num_id)
     if not p:
-        raise HTTPException(400, "no pending OTP for this number (re-send)")
+        raise HTTPException(400, "no pending OTP for this number (re-send or expired)")
     vault = bm.Vault(PROVIDERS[p["provider"]]["vault_dir"])
     client, _ = _client(p["provider"], p["msisdn"], vault)
     try:
@@ -265,6 +337,7 @@ def balance(num_id: str):
 
 @app.delete("/numbers/{num_id}")
 def delete_number(num_id: str):
+    _purge_pending()
     p = _pending.pop(num_id, None)
     reg = _load_registry()
     target = next((n for n in reg["numbers"] if n["id"] == num_id), None)
@@ -286,6 +359,7 @@ def delete_number(num_id: str):
 
 
 def _snapshot() -> List[Dict[str, Any]]:
+    _purge_pending()
     out = []
     for n in _load_registry()["numbers"]:
         item = {"id": n["id"], "provider": n["provider"],

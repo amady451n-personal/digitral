@@ -2,43 +2,73 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Digitral">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/assets/bima.png">
+<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
 <title>Digitral multi-number dashboard</title>
 <style>
-  :root { --bg:#0f172a; --card:#1e293b; --fg:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --danger:#f87171; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--fg); }
-  header { padding:16px 24px; background:#0b1220; display:flex; justify-content:space-between; align-items:center; }
-  header h1 { margin:0; font-size:18px; }
-  main { padding:24px; max-width:1100px; margin:0 auto; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
-  .card { background:var(--card); border-radius:12px; padding:16px; position:relative; }
-  .card h3 { margin:0 0 4px; font-size:16px; }
-  .card .msisdn { color:var(--muted); font-size:13px; margin-bottom:12px; }
-  .row { display:flex; justify-content:space-between; font-size:14px; margin:4px 0; }
+  :root { --bg:#0f172a; --card:#1e293b; --fg:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --danger:#f87171; --ok:#4ade80; --warn:#fbbf24; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--fg); }
+  body { padding-bottom: env(safe-area-inset-bottom); }
+  header { padding:14px 16px; background:#0b1220; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:10; padding-top:calc(14px + env(safe-area-inset-top)); }
+  header h1 { margin:0; font-size:17px; }
+  #status { font-size:12px; color:var(--muted); }
+  #status.offline { color:var(--danger); }
+  main { padding:16px; max-width:1100px; margin:0 auto; }
+  .toolbar { margin-bottom:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .grid { display:grid; grid-template-columns:1fr; gap:12px; }
+  @media (min-width:640px) { .grid { grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); } }
+  .card { border-radius:14px; padding:14px; position:relative; overflow:hidden; min-height:120px; background:var(--card); border:1px solid #334155; }
+  .card::before { content:""; position:absolute; right:-10px; bottom:-10px; width:96px; height:96px; background-size:contain; background-repeat:no-repeat; background-position:right bottom; opacity:0.18; pointer-events:none; }
+  .card.provider-bima::before { background-image:url(/assets/bima.png); }
+  .card.provider-myim3::before { background-image:url(/assets/myim3.png); }
+  .card.pending { border-style:dashed; border-color:var(--warn); }
+  .card h3 { margin:0 0 2px; font-size:16px; display:flex; align-items:center; gap:8px; }
+  .card .badge { font-size:11px; padding:2px 8px; border-radius:999px; background:#334155; color:var(--muted); }
+  .card .badge.pending { background:#78350f; color:#fde68a; }
+  .card .msisdn { color:var(--muted); font-size:13px; margin-bottom:10px; }
+  .row { display:flex; justify-content:space-between; font-size:14px; margin:3px 0; }
   .row .k { color:var(--muted); }
   .err { color:var(--danger); font-size:13px; margin-top:8px; }
-  .ok { color:#4ade80; }
-  button { background:var(--accent); color:#0b1220; border:0; border-radius:8px; padding:8px 12px; cursor:pointer; font-weight:600; }
+  .ok { color:var(--ok); }
+  button { background:var(--accent); color:#0b1220; border:0; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:600; font-size:14px; min-height:40px; }
+  button:disabled { opacity:0.5; cursor:not-allowed; }
   button.danger { background:var(--danger); color:#fff; }
   button.ghost { background:transparent; color:var(--muted); border:1px solid #334155; }
-  .modal-back { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; }
+  button.small { padding:6px 10px; font-size:13px; min-height:32px; }
+  .modal-back { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:flex-end; justify-content:center; z-index:50; }
+  @media (min-width:640px) { .modal-back { align-items:center; } }
   .modal-back.show { display:flex; }
-  .modal { background:var(--card); border-radius:12px; padding:20px; width:360px; max-width:90vw; }
-  .modal h2 { margin:0 0 12px; font-size:16px; }
-  .modal input, .modal select { width:100%; padding:8px; margin:6px 0 12px; border-radius:6px; border:1px solid #334155; background:#0f172a; color:var(--fg); }
+  .modal { background:var(--card); border-radius:16px 16px 0 0; padding:20px; width:100%; max-width:420px; max-height:90vh; overflow:auto; }
+  @media (min-width:640px) { .modal { border-radius:16px; } }
+  .modal h2 { margin:0 0 12px; font-size:17px; }
+  .modal input, .modal select { width:100%; padding:10px; margin:6px 0 12px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:var(--fg); font-size:16px; }
   .status { font-size:12px; color:var(--muted); margin-top:8px; }
-  .toolbar { margin-bottom:16px; display:flex; gap:8px; align-items:center; }
+  .pending-box { margin-top:10px; padding:10px; background:#0f172a; border-radius:8px; }
+  .pending-box input { margin:6px 0; }
+  .actions { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
+  .install-btn { display:none; }
+  .install-btn.show { display:inline-block; }
 </style>
 </head>
 <body>
 <header>
-  <h1>Digitral multi-number dashboard</h1>
-  <span id="status" class="status">connecting…</span>
+  <h1>Digitral</h1>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button id="installBtn" class="ghost small install-btn">Install</button>
+    <span id="status" class="status">connecting…</span>
+  </div>
 </header>
 <main>
   <div class="toolbar">
     <button id="addBtn">+ Tambah nomor</button>
-    <button id="refreshBtn" class="ghost">Refresh now</button>
+    <button id="refreshBtn" class="ghost">Refresh</button>
   </div>
   <div id="grid" class="grid"></div>
 </main>
@@ -49,11 +79,11 @@
     <label>Provider</label>
     <select id="prov"></select>
     <label>Nomor (62…)</label>
-    <input id="msisdn" placeholder="628xxxxxxxxxx">
+    <input id="msisdn" type="tel" inputmode="numeric" placeholder="628xxxxxxxxxx">
     <button id="sendOtp">Kirim OTP</button>
     <div id="otpStep" style="display:none">
       <label>Kode OTP</label>
-      <input id="otp" placeholder="123456">
+      <input id="otp" inputmode="numeric" placeholder="123456">
       <button id="verifyOtp">Verifikasi</button>
     </div>
     <div id="modalMsg" class="status"></div>
@@ -69,17 +99,26 @@ async function api(path, opts={}) {
   const r = await fetch(API + path, {headers:{"Content-Type":"application/json"}, ...opts});
   const t = await r.text();
   let j; try { j = JSON.parse(t); } catch { j = {raw:t}; }
-  if (!r.ok) throw new Error(j.detail || j.error || r.statusText);
+  if (!r.ok) throw new Error(j.detail || j.error || j.message || r.statusText);
   return j;
+}
+
+async function withBusy(btn, fn) {
+  if (btn.disabled) return;
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "…";
+  try { await fn(); }
+  finally { btn.disabled = false; btn.textContent = orig; }
 }
 
 function fmtQuota(d) {
   if (!d) return "-";
   const r = d.summary?.data?.remainingquota;
-  const u = d.summary?.data?.quotaunit || "KB";
+  const u = (d.summary?.data?.quotaunit || "KB").toUpperCase();
   if (r == null) return "-";
   const kb = Number(r);
-  if (u.toUpperCase()==="KB") {
+  if (u === "KB") {
     if (kb >= 1024*1024) return (kb/1024/1024).toFixed(2)+" GB";
     if (kb >= 1024) return (kb/1024).toFixed(1)+" MB";
     return kb+" KB";
@@ -93,9 +132,26 @@ function renderNumber(n) {
   const aktif = d.prepaidinfo?.cardactiveuntil ?? "-";
   const grace = d.prepaidinfo?.graceperioduntil;
   const bonstri = d.bonstriDetails?.totalPoints;
+  const cls = "card provider-" + (n.provider || "");
+  if (n.pending) {
+    return `
+    <div class="${cls} pending">
+      <h3>${n.label || n.provider} <span class="badge pending">menunggu OTP</span></h3>
+      <div class="msisdn">${n.msisdn}</div>
+      <div class="pending-box">
+        <input id="otp-${n.id}" inputmode="numeric" placeholder="Kode OTP">
+        <div class="actions">
+          <button class="small" onclick="verifyPending('${n.id}')">Verifikasi</button>
+          <button class="small ghost" onclick="resendPending('${n.id}', this)">Kirim ulang</button>
+          <button class="small danger" onclick="removeNum('${n.id}')">Batal</button>
+        </div>
+        <div id="msg-${n.id}" class="status"></div>
+      </div>
+    </div>`;
+  }
   return `
-    <div class="card">
-      <h3>${n.label || n.provider}</h3>
+    <div class="${cls}">
+      <h3>${n.label || n.provider} <span class="badge">${n.provider}</span></h3>
       <div class="msisdn">${n.msisdn}</div>
       ${n.ok ? `
         <div class="row"><span class="k">Pulsa</span><span>Rp ${pulsa}</span></div>
@@ -104,35 +160,57 @@ function renderNumber(n) {
         ${grace ? `<div class="row"><span class="k">Grace s/d</span><span>${grace}</span></div>` : ""}
         ${bonstri != null ? `<div class="row"><span class="k">Bonstri</span><span>${bonstri} pts</span></div>` : ""}
       ` : `<div class="err">${n.error || "no data"}</div>`}
-      <div style="margin-top:12px;display:flex;gap:8px">
-        <button class="ghost" onclick="refreshOne('${n.id}')">Refresh</button>
-        <button class="danger" onclick="removeNum('${n.id}')">Hapus</button>
+      <div class="actions">
+        <button class="ghost small" onclick="refreshOne('${n.id}', this)">Refresh</button>
+        <button class="danger small" onclick="removeNum('${n.id}', this)">Hapus</button>
       </div>
     </div>`;
 }
 
 async function loadNumbers() {
-  const j = await api("/numbers");
+  const j = await api("/numbers?include_pending=1");
   const grid = document.getElementById("grid");
-  // fetch balance per number in parallel
   const enriched = await Promise.all(j.numbers.map(async n => {
+    if (n.pending) return {...n, ok:false};
     try { const b = await api(`/numbers/${n.id}/balance`); return {...n, ok:true, data:b.balance}; }
     catch (e) { return {...n, ok:false, error:e.message}; }
   }));
   grid.innerHTML = enriched.map(renderNumber).join("") || "<p class='status'>Belum ada nomor. Tambah dengan tombol +.</p>";
+  try { localStorage.setItem("digitral:lastSnapshot", JSON.stringify(enriched)); } catch {}
 }
 
-async function refreshOne(id) {
-  await loadNumbers();
+async function refreshOne(id, btn) {
+  await withBusy(btn, async () => { await loadNumbers(); });
 }
 
-async function removeNum(id) {
+async function removeNum(id, btn) {
   if (!confirm("Hapus nomor ini dari dashboard?")) return;
-  await api(`/numbers/${id}`, {method:"DELETE"});
-  await loadNumbers();
+  const run = async () => { await api(`/numbers/${id}`, {method:"DELETE"}); await loadNumbers(); };
+  if (btn) await withBusy(btn, run); else await run();
 }
 
-// modal
+async function verifyPending(id) {
+  const otp = document.getElementById(`otp-${id}`).value.trim();
+  const msg = document.getElementById(`msg-${id}`);
+  const btn = event.target;
+  await withBusy(btn, async () => {
+    try {
+      await api(`/numbers/${id}/verify`, {method:"POST", body:JSON.stringify({otp})});
+      msg.textContent = "Terverifikasi ✓";
+      await loadNumbers();
+    } catch (e) { msg.textContent = "Gagal: "+e.message; throw e; }
+  });
+}
+
+async function resendPending(id, btn) {
+  await withBusy(btn, async () => {
+    try {
+      const r = await api(`/numbers/${id}/resend`, {method:"POST"});
+      document.getElementById(`msg-${id}`).textContent = "OTP terkirim ulang.";
+    } catch (e) { document.getElementById(`msg-${id}`).textContent = "Gagal: "+e.message; throw e; }
+  });
+}
+
 const modal = document.getElementById("modal");
 document.getElementById("addBtn").onclick = async () => {
   const provs = await api("/providers");
@@ -145,51 +223,83 @@ document.getElementById("addBtn").onclick = async () => {
   pendingId = null;
   modal.classList.add("show");
 };
-document.getElementById("prov").addEventListener("change", async () => {
-  if (pendingId) {
-    try { await api(`/numbers/${pendingId}`, {method:"DELETE"}); } catch {}
-    pendingId = null;
-  }
+
+document.getElementById("prov").addEventListener("change", () => {
+  if (pendingId) { api(`/numbers/${pendingId}`, {method:"DELETE"}).catch(()=>{}); pendingId = null; }
   document.getElementById("msisdn").value = "";
   document.getElementById("otp").value = "";
   document.getElementById("otpStep").style.display = "none";
   document.getElementById("modalMsg").textContent = "";
 });
 
+document.getElementById("sendOtp").onclick = async (e) => {
+  const btn = e.target;
+  await withBusy(btn, async () => {
+    const msisdn = document.getElementById("msisdn").value.trim();
+    const provider = document.getElementById("prov").value;
+    const msg = document.getElementById("modalMsg");
+    try {
+      const r = await api("/numbers", {method:"POST", body:JSON.stringify({provider, msisdn})});
+      pendingId = r.id;
+      if (r.otp_required === false) {
+        msg.textContent = "Sesi sudah ada — tanpa OTP ✓";
+        modal.classList.remove("show");
+        await loadNumbers();
+      } else {
+        msg.textContent = "OTP terkirim. Masukkan kode.";
+        document.getElementById("otpStep").style.display = "block";
+      }
+    } catch (err) { msg.textContent = "Gagal: "+err.message; throw err; }
+  });
+};
+
+document.getElementById("verifyOtp").onclick = async (e) => {
+  const btn = e.target;
+  await withBusy(btn, async () => {
+    const otp = document.getElementById("otp").value.trim();
+    const msg = document.getElementById("modalMsg");
+    try {
+      await api(`/numbers/${pendingId}/verify`, {method:"POST", body:JSON.stringify({otp})});
+      msg.textContent = "Terverifikasi ✓";
+      pendingId = null;
+      modal.classList.remove("show");
+      await loadNumbers();
+    } catch (err) { msg.textContent = "Gagal: "+err.message; throw err; }
+  });
+};
+
 document.getElementById("cancelBtn").onclick = async () => {
-  if (pendingId) {
-    try { await api(`/numbers/${pendingId}`, {method:"DELETE"}); } catch {}
-    pendingId = null;
-  }
+  if (pendingId) { try { await api(`/numbers/${pendingId}`, {method:"DELETE"}); } catch {} pendingId = null; }
   modal.classList.remove("show");
 };
 
-document.getElementById("sendOtp").onclick = async () => {
-  const msisdn = document.getElementById("msisdn").value.trim();
-  const provider = document.getElementById("prov").value;
-  const msg = document.getElementById("modalMsg");
-  try {
-    const r = await api("/numbers", {method:"POST", body:JSON.stringify({provider, msisdn})});
-    pendingId = r.id;
-    msg.textContent = "OTP terkirim. Masukkan kode.";
-    document.getElementById("otpStep").style.display = "block";
-  } catch (e) { msg.textContent = "Gagal: "+e.message; }
+document.getElementById("refreshBtn").onclick = async (e) => {
+  await withBusy(e.target, async () => { await loadNumbers(); });
 };
 
-document.getElementById("verifyOtp").onclick = async () => {
-  const otp = document.getElementById("otp").value.trim();
-  const msg = document.getElementById("modalMsg");
+// offline snapshot restore
+function restoreSnapshot() {
   try {
-    await api(`/numbers/${pendingId}/verify`, {method:"POST", body:JSON.stringify({otp})});
-    msg.textContent = "Terverifikasi ✓";
-    modal.classList.remove("show");
-    await loadNumbers();
-  } catch (e) { msg.textContent = "Gagal: "+e.message; }
-};
+    const raw = localStorage.getItem("digitral:lastSnapshot");
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    const grid = document.getElementById("grid");
+    if (grid.children.length === 0) grid.innerHTML = data.map(renderNumber).join("");
+  } catch {}
+}
+restoreSnapshot();
 
-document.getElementById("refreshBtn").onclick = loadNumbers;
+// status
+const statusEl = document.getElementById("status");
+function setOnline() {
+  statusEl.textContent = navigator.onLine ? "live" : "offline";
+  statusEl.classList.toggle("offline", !navigator.onLine);
+}
+window.addEventListener("online", () => { setOnline(); loadNumbers(); });
+window.addEventListener("offline", setOnline);
+setOnline();
 
-// SSE auto-refresh
+// SSE
 function connectStream() {
   const es = new EventSource("/stream");
   es.onmessage = e => {
@@ -197,15 +307,34 @@ function connectStream() {
       const p = JSON.parse(e.data);
       if (p.numbers) {
         const grid = document.getElementById("grid");
-        grid.innerHTML = p.numbers.map(renderNumber).join("") || "<p class='status'>Belum ada nomor.</p>";
+        grid.innerHTML = p.numbers.map(renderNumber).join("") || "<p class='status'>Belum ada nomor. Tambah dengan tombol +.</p>";
+        try { localStorage.setItem("digitral:lastSnapshot", JSON.stringify(p.numbers)); } catch {}
+        setOnline();
       }
     } catch {}
   };
-  es.onerror = () => { document.getElementById("status").textContent = "stream terputus, retry…"; };
-  es.onopen = () => { document.getElementById("status").textContent = "live"; };
+  es.onerror = () => { statusEl.textContent = "stream terputus, retry…"; statusEl.classList.add("offline"); };
+  es.onopen = () => setOnline();
 }
 connectStream();
 loadNumbers();
+
+// install prompt
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById("installBtn").classList.add("show");
+});
+document.getElementById("installBtn").onclick = async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  document.getElementById("installBtn").classList.remove("show");
+};
 </script>
 </body>
 </html>
+EOF
+echo done

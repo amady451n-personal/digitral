@@ -84,3 +84,28 @@ docker compose down -v         # hentikan + hapus data/vault
 - `HOST` default `0.0.0.0` di container (server.py baca env `HOST`/`PORT`).
 - Healthcheck via `urllib` ke `/health`.
 - `DEVICE_PROFILE=/app/profile.json` (mount read-only) untuk seed profil perangkat asli.
+## JSON mode (CLI)
+`scripts/bima_balance.py --json` (dan `myim3_balance.py`) mencetak satu objek JSON ke stdout,
+log/progress ke stderr, exit 0/1. Schema balance:
+`{provider, msisdn, status, balance, quota, unit, used, unlimited, active_until,
+grace_until, bonstri, session_reused}`. Error: `{status:"error", code, message}`.
+Send: `{status:"otp_sent", transid}`. Berguna untuk scripting/debug/host — frontend
+memakai HTTP API, bukan shell CLI.
+
+## pending lifecycle
+- `PENDING_TTL_SEC` (default 300, env). Entri pending kadaluarsa auto-drop.
+- `add_number` idempoten untuk `(provider, msisdn)` yang sama → re-send OTP, update transid.
+- `POST /numbers/{id}/resend`, `GET /numbers?include_pending=1`.
+- Frontend menampilkan kartu "menunggu OTP" + tombol kirim ulang/batal.
+
+## PWA & mobile
+- Mobile-first CSS, input types `tel`/`numeric`, safe-area insets, bottom sheet modal.
+- `manifest.json`, `sw.js` (cache-first shell, network-first API, offline fallback ke
+  localStorage snapshot), `assets/icon.svg` + `assets/{bima,myim3}.png`.
+- Install prompt (`beforeinstallprompt`) + instruksi iOS.
+- Wajib HTTPS di produksi (secure context).
+
+## All-in-container
+- Vault + registry di volume `digitral_data` → `/app/data`. `BIMA_HOME=/app/data/bima`
+  di Dockerfile agar CLI berbagi sesi dengan backend.
+- Default bridge (tanpa `network_mode: host`). Jika 502: cek egress/DNS/proxy container.

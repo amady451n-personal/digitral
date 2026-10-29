@@ -559,7 +559,9 @@ class BimaClient:
         else:
             self.request_guest_token()
             transid = self.send_otp()
-            otp = input(f"OTP sent to +{self.msisdn[-9:]}. Enter code: ").strip()
+            sys.stderr.write(f"OTP sent to +{self.msisdn[-9:]}. Enter code: ")
+            sys.stderr.flush()
+            otp = input("").strip()
             self.token = self.validate_otp(transid, otp)
             self.vault.put_session(self.msisdn, {
                 "token": self.token,
@@ -648,6 +650,7 @@ def main():
                     help="poll aktual tiap SEC detik setelah tampilan pertama (real-time)")
     ap.add_argument("--verbose", "-v", action="store_true")
     ap.add_argument("--selftest", action="store_true", help="offline crypto self-check")
+    ap.add_argument("--json", action="store_true", help="emit machine-readable JSON to stdout (logs to stderr)")
     args = ap.parse_args()
     if args.base_url is None:
         args.base_url = (PROVIDER_CFG or PROVIDER_BIMA)["base_default"]
@@ -685,6 +688,14 @@ def main():
         client.req_time = int(time.time() * 1000)
         body = json.dumps({"msisdn": client.msisdn, "action": client.action}, separators=(",", ":"))
         h = client.build_headers("/otp/send/v1", body)
+        if args.json:
+            print(json.dumps({
+                "provider": BRAND, "msisdn": client.msisdn, "status": "dry_run",
+                "base": http.base, "headers": redact(h), "body": body,
+                "aes_body_sample": aes_gcm_encrypt(GCM_PINPUK_KEY, GCM_STATIC_IV,
+                    json.dumps({"transid": "DRYRUN", "otp": "123456"}, separators=(",", ":"))),
+            }, ensure_ascii=False))
+            return
         print(f"BASE {http.base}")
         print(json.dumps(redact(h), indent=2))
         print("body:", body)
@@ -694,15 +705,47 @@ def main():
                                          separators=(",", ":"))))
         return
 
+    reused = vault.session(client.msisdn) is not None
     result = client.get_balance()
-    print_balance(result, client.msisdn)
+    if args.json:
+        out = {
+            "provider": BRAND, "msisdn": client.msisdn, "status": "ok",
+            "session_reused": reused,
+            "balance": result.get("balance"),
+            "quota": result.get("quota"),
+            "unit": result.get("unit"),
+            "used": result.get("used"),
+            "unlimited": result.get("unlimited"),
+            "active_until": result.get("active_until"),
+            "grace_until": result.get("grace_until"),
+            "bonstri": result.get("bonstri"),
+        }
+        print(json.dumps(out, ensure_ascii=False))
+    else:
+        print_balance(result, client.msisdn)
     if args.watch > 0:
-        print(f"polling every {args.watch:g}s — Ctrl-C berhenti", flush=True)
+        if not args.json:
+            print(f"polling every {args.watch:g}s — Ctrl-C berhenti", flush=True)
         while True:
             time.sleep(args.watch)
             try:
-                print_balance(parse_dashboard(client.dashboard()),
-                              client.msisdn, time.strftime("%H:%M:%S"))
+                r = parse_dashboard(client.dashboard())
+                if args.json:
+                    o = {
+                        "provider": BRAND, "msisdn": client.msisdn, "status": "ok",
+                        "balance": r.get("balance"),
+                        "quota": r.get("quota"),
+                        "unit": r.get("unit"),
+                        "used": r.get("used"),
+                        "unlimited": r.get("unlimited"),
+                        "active_until": r.get("active_until"),
+                        "grace_until": r.get("grace_until"),
+                        "bonstri": r.get("bonstri"),
+                        "ts": time.time(),
+                    }
+                    print(json.dumps(o, ensure_ascii=False), flush=True)
+                else:
+                    print_balance(r, client.msisdn, time.strftime("%H:%M:%S"))
             except KeyboardInterrupt:
                 break
 

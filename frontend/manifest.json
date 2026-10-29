@@ -1,0 +1,15 @@
+{
+  "name": "Digitral multi-number dashboard",
+  "short_name": "Digitral",
+  "description": "Saldo & kuota multi-nomor bima+ dan myIM3",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#38bdf8",
+  "icons": [
+    { "src": "/assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/assets/bima.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
