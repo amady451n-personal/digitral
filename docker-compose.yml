@@ -5,7 +5,7 @@ services:
     container_name: digitral-dashboard
     restart: unless-stopped
     ports:
-      - "8765:8765"
+      - "${HOST_PORT:-8765}:8765"
     environment:
       FRONTEND_HOME: /app/data
       POLL_SEC: "60"
