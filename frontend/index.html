@@ -145,7 +145,24 @@ document.getElementById("addBtn").onclick = async () => {
   pendingId = null;
   modal.classList.add("show");
 };
-document.getElementById("cancelBtn").onclick = () => modal.classList.remove("show");
+document.getElementById("prov").addEventListener("change", async () => {
+  if (pendingId) {
+    try { await api(`/numbers/${pendingId}`, {method:"DELETE"}); } catch {}
+    pendingId = null;
+  }
+  document.getElementById("msisdn").value = "";
+  document.getElementById("otp").value = "";
+  document.getElementById("otpStep").style.display = "none";
+  document.getElementById("modalMsg").textContent = "";
+});
+
+document.getElementById("cancelBtn").onclick = async () => {
+  if (pendingId) {
+    try { await api(`/numbers/${pendingId}`, {method:"DELETE"}); } catch {}
+    pendingId = null;
+  }
+  modal.classList.remove("show");
+};
 
 document.getElementById("sendOtp").onclick = async () => {
   const msisdn = document.getElementById("msisdn").value.trim();

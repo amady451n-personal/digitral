@@ -88,6 +88,9 @@ def _find(num_id: str) -> Optional[Dict[str, Any]]:
     for n in _load_registry()["numbers"]:
         if n["id"] == num_id:
             return n
+    p = _pending.get(num_id)
+    if p:
+        return {"id": num_id, "provider": p["provider"], "msisdn": p["msisdn"], "pending": True}
     return None
 
 
@@ -105,7 +108,7 @@ def _seed_vault(provider: str):
 
 
 # ---------- per-number client factory ----------
-_pending: Dict[str, str] = {}   # number_id -> transid awaiting OTP verify
+_pending: Dict[str, Dict[str, Any]] = {}   # number_id -> {provider, msisdn, transid, created_at}
 
 
 def _client(provider: str, msisdn: str, vault: Optional[bm.Vault] = None):
@@ -178,12 +181,27 @@ def add_number(body: AddNumber):
     if body.provider not in PROVIDERS or PROVIDERS[body.provider]["cfg"] is None:
         raise HTTPException(400, "unknown/unavailable provider")
     msisdn = bm.normalize_msisdn(body.msisdn)
-    # avoid duplicates
     reg = _load_registry()
     for n in reg["numbers"]:
         if n["provider"] == body.provider and n["msisdn"] == msisdn:
             raise HTTPException(409, "number already registered")
+    for pid, p in _pending.items():
+        if p["provider"] == body.provider and p["msisdn"] == msisdn:
+            raise HTTPException(409, "number already pending OTP verification")
+
     vault = _seed_vault(body.provider)
+    # reuse an already-valid session if present (no OTP needed)
+    sess = vault.session(msisdn)
+    if sess and sess.get("token"):
+        nid = uuid.uuid4().hex[:12]
+        reg["numbers"].append({
+            "id": nid, "provider": body.provider, "msisdn": msisdn,
+            "added_at": time.time(),
+        })
+        _save_registry(reg)
+        return {"id": nid, "msisdn": msisdn, "provider": body.provider,
+                "status": "session_reused", "otp_required": False}
+
     client, _ = _client(body.provider, msisdn, vault)
     try:
         transid = client.send_otp()
@@ -192,35 +210,36 @@ def add_number(body: AddNumber):
     except Exception as e:
         raise HTTPException(502, f"{type(e).__name__}: {e}")
     nid = uuid.uuid4().hex[:12]
-    reg["numbers"].append({
-        "id": nid, "provider": body.provider, "msisdn": msisdn,
-        "added_at": time.time(),
-    })
-    _save_registry(reg)
-    _pending[nid] = transid
+    _pending[nid] = {
+        "provider": body.provider, "msisdn": msisdn,
+        "transid": transid, "created_at": time.time(),
+    }
     return {"id": nid, "msisdn": msisdn, "provider": body.provider,
-            "transid": transid, "status": "otp_sent"}
+            "transid": transid, "status": "otp_sent", "otp_required": True}
 
 
 @app.post("/numbers/{num_id}/verify")
 def verify(num_id: str, body: VerifyOtp):
-    info = _find(num_id)
-    if not info:
-        raise HTTPException(404, "number not found")
-    transid = _pending.get(num_id)
-    if not transid:
+    p = _pending.get(num_id)
+    if not p:
         raise HTTPException(400, "no pending OTP for this number (re-send)")
-    vault = bm.Vault(PROVIDERS[info["provider"]]["vault_dir"])
-    client, _ = _client(info["provider"], info["msisdn"], vault)
+    vault = bm.Vault(PROVIDERS[p["provider"]]["vault_dir"])
+    client, _ = _client(p["provider"], p["msisdn"], vault)
     try:
-        token = client.validate_otp(transid, body.otp.strip())
+        token = client.validate_otp(p["transid"], body.otp.strip())
     except SystemExit as e:
         raise HTTPException(400, str(e))
     except Exception as e:
         raise HTTPException(400, f"{type(e).__name__}: {e}")
-    vault.put_session(info["msisdn"], {"token": token, "exp": bm._jwt_exp(token)})
+    vault.put_session(p["msisdn"], {"token": token, "exp": bm._jwt_exp(token)})
+    reg = _load_registry()
+    reg["numbers"].append({
+        "id": num_id, "provider": p["provider"], "msisdn": p["msisdn"],
+        "added_at": time.time(),
+    })
+    _save_registry(reg)
     _pending.pop(num_id, None)
-    return {"ok": True, "id": num_id}
+    return {"ok": True, "id": num_id, "status": "verified"}
 
 
 @app.get("/numbers/{num_id}/balance")
@@ -246,17 +265,23 @@ def balance(num_id: str):
 
 @app.delete("/numbers/{num_id}")
 def delete_number(num_id: str):
-    info = _find(num_id)
-    if not info:
-        raise HTTPException(404, "number not found")
-    try:
-        bm.Vault(PROVIDERS[info["provider"]]["vault_dir"]).drop_session(info["msisdn"])
-    except Exception:
-        pass
+    p = _pending.pop(num_id, None)
     reg = _load_registry()
-    reg["numbers"] = [n for n in reg["numbers"] if n["id"] != num_id]
-    _save_registry(reg)
-    _pending.pop(num_id, None)
+    target = next((n for n in reg["numbers"] if n["id"] == num_id), None)
+    if target is None and p is None:
+        raise HTTPException(404, "number not found")
+    if target is not None:
+        try:
+            bm.Vault(PROVIDERS[target["provider"]]["vault_dir"]).drop_session(target["msisdn"])
+        except Exception:
+            pass
+        reg["numbers"] = [n for n in reg["numbers"] if n["id"] != num_id]
+        _save_registry(reg)
+    elif p is not None:
+        try:
+            bm.Vault(PROVIDERS[p["provider"]]["vault_dir"]).drop_session(p["msisdn"])
+        except Exception:
+            pass
     return {"ok": True}
 
 
