@@ -1,0 +1,21 @@
+Inventaris laptop desktop-elixer-local untuk tangkapan emulator bima+
+Dicek: Selasa 2026-10-20 (read-only, dari WSL Ubuntu via SSH)
+
+Sudah ada:
+- Berkas aplikasi: /home/elixerwsl/yasin/reamobile/bima+5.17.0.apk+
+  Zip bundle, SHA256 bf5c2587082bd6ce7b00212680aa012c34536cc4f5e5bd4eec5061977cf407fb
+  IDENTIK dengan artefak yang dianalisis Jalu. Isi: base.apk (105.722.274 byte)
+  + split_config.arm64_v8a.apk + split_config.xxhdpi.apk + apk+.json + icon.png.
+  Karena berupa split bundle, pemasangan ke emulator memakai adb install-multiple.
+- WSL Ubuntu: java, python3, pip3 tersedia. Ruang kosong root WSL: 863 GB.
+- Dokumen analisis: /home/elixerwsl/yasin/reamobile/bima+-5.17.0.md (terkirim 2026-10-19).
+
+Belum ada (perlu dipasang saat eksekusi, lihat RUNBOOK.md):
+- Android SDK / Android Studio / emulator / adb — tidak ditemukan di Windows maupun WSL.
+- mitmproxy — belum terpasang.
+
+Catatan sumber daya:
+- Drive C: tersisa 68 GB dari 277 GB — cukup untuk SDK + 1 system image + 1 AVD
+  (perkiraan total 12-18 GB), tapi jangan menumpuk AVD.
+- RAM terlihat dari WSL hanya 5,8 GB (batas WSL); emulator berjalan di Windows,
+  atur RAM AVD 2-3 GB saja.

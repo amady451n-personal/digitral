@@ -1,0 +1,7 @@
+# artefak pihak ketiga besar (APK induk; sudah diekstrak-analisis, tidak mudah berubah)
+*.apk+
+# hasil ekstraksi/pnggungan lokal
+__pycache__/
+*.pyc
+# sesi IDE/agent lokal (bukan defenisi proyek)
+.claude/
