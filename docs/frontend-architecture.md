@@ -71,11 +71,18 @@ with a thread pool or move to per-number refresh on demand.
 - Crypto: `aes_gcm_encrypt`, `rc4_hex`, `sha512_hex` (identical across providers).
 - Device identity: `Vault.faaid/gaid/device_id` (stable per vault).
 
-## Known limits of the sample
-- Pending OTPs are in-memory: server restart mid-verify requires re-send.
-- No auth on the API: bind to 127.0.0.1 or put behind your own auth proxy.
-- Provider constants for myXL/axisnet are not yet verified (slots are None).
-- Device profile defaults to a generic stand-in; seed a real profile via
-  `DEVICE_PROFILE=/path/to/profile.json` for better risk-engine parity.
+## Deployment (Docker Compose)
+Lihat `Dockerfile`, `docker-compose.yml`, `requirements.txt`, `.dockerignore`, `README.md`.
+
+```bash
+docker compose up -d --build   # http://localhost:8765
+docker compose down -v         # hentikan + hapus data/vault
+```
+
+- Image berbasis `python:3.11-slim`, ~ (pip install curl_cffi + cryptography + fastapi).
+- Volume `digitral_data` → `/app/data` (vaults + registry) persisten.
+- `HOST` default `0.0.0.0` di container (server.py baca env `HOST`/`PORT`).
+- Healthcheck via `urllib` ke `/health`.
+- `DEVICE_PROFILE=/app/profile.json` (mount read-only) untuk seed profil perangkat asli.
 EOF
 echo done

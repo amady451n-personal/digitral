@@ -1,0 +1,12 @@
+# big third-party artifacts
+*.apk+
+# local dev / secrets
+.claude/
+__pycache__/
+*.pyc
+# git
+.git/
+# test volumes (host)
+/tmp/
+# data (mounted as volume, not baked into image)
+data/

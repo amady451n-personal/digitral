@@ -312,4 +312,4 @@ if __name__ == "__main__":
     import uvicorn
     HOME.mkdir(parents=True, exist_ok=True)
     VAULTS_DIR.mkdir(parents=True, exist_ok=True)
-    uvicorn.run(app, host="127.0.0.1", port=8765)
+    uvicorn.run(app, host=os.environ.get("HOST", "0.0.0.0"), port=int(os.environ.get("PORT", "8765")))
