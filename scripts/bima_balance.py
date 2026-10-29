@@ -630,7 +630,7 @@ def print_balance(result: dict, msisdn: str, stamp: str = "") -> None:
 def main():
     ap = argparse.ArgumentParser(description=f"{BRAND} balance via decompiled protocol")
     ap.add_argument("msisdn", nargs="?", help="mobile number, e.g. +62895… / 0895… / 895…")
-    ap.add_argument("--action", default="login", help="send-OTP action (default: login)")
+    ap.add_argument("--action", default="register", help="send-OTP action (default: register; required by risk gate)")
     ap.add_argument("--child", default=None, help="child line msisdn (same login account)")
     ap.add_argument("--deviceid", default=None,
                     help="X-DEVICEID (e.g. your phone's android_id via adb; risk engine flags "
