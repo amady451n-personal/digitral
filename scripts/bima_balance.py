@@ -79,6 +79,45 @@ DEFAULT_UA = (
 HOME_DIR = Path(os.environ.get("BIMA_HOME", str(Path.home() / ".bima")))
 
 
+# --- provider profiles (multi-provider frontend support) ----------------------
+# A provider = one operator app (bima+, myIM3, myXL, axisnet, ...). Each has its own
+# base host + service key + channel + version, but the protocol, crypto and header
+# shape are shared across the Digitral family. The client is parameterised by `cfg`
+# so several providers can be served concurrently (required by any multi-number
+# dashboard) instead of monkey-patching module globals.
+def make_provider_cfg(authorization=AUTHORIZATION, servicekey=SERVICEKEY, channel=CHANNEL,
+                      app_version=APP_VERSION, app_os=APP_OS,
+                      gcm_pinpuk_key=GCM_PINPUK_KEY, gcm_static_iv=GCM_STATIC_IV,
+                      rc4_child_key=RC4_CHILD_KEY, secret=SECRET,
+                      base_default=BASE_DEFAULT):
+    return {
+        "authorization": authorization,
+        "servicekey": servicekey,
+        "channel": channel,
+        "app_version": app_version,
+        "app_os": app_os,
+        "gcm_pinpuk_key": gcm_pinpuk_key,
+        "gcm_static_iv": gcm_static_iv,
+        "rc4_child_key": rc4_child_key,
+        "secret": secret,
+        "base_default": base_default,
+    }
+
+
+PROVIDER_BIMA = make_provider_cfg()
+PROVIDER_MYIM3 = make_provider_cfg(
+    servicekey="i4WxFMMLvWqnrvuAyg58",
+    channel="V2MYIM3",
+    app_version="82.17.0",
+    base_default="https://myim3api1.ioh.co.id/api/v2",
+)
+# slots reserved for the other Digitral-family apps present in this repo:
+PROVIDER_MYXL = None    # needs decompile-verified constants (myxl-9.6.0.apk+)
+PROVIDER_AXISNET = None # needs decompile-verified constants (axisnet-11.0.0.apk+)
+
+PROVIDER_CFG = PROVIDER_BIMA  # active provider for this process; myim3_balance overrides
+
+
 # --- crypto helpers -----------------------------------------------------------
 def sha512_hex(s: str) -> str:
     return hashlib.sha512(s.encode("utf-8")).hexdigest()
@@ -147,8 +186,8 @@ def normalize_msisdn(msisdn: str) -> str:
 class Vault:
     """AES-GCM-encrypted JSON store. Key file is separate; 0600 perms; tokens never logged."""
 
-    def __init__(self):
-        self.dir = HOME_DIR
+    def __init__(self, home_dir=None):
+        self.dir = Path(home_dir) if home_dir else HOME_DIR
         self.dir.mkdir(parents=True, exist_ok=True)
         self.key_file = self.dir / "vault.key"
         self.data_file = self.dir / "vault.bin"
@@ -302,7 +341,7 @@ class BimaClient:
                  child: str | None = None, verbose: bool = False,
                  device_id: str | None = None, device_name: str | None = None,
                  oem: str | None = None, model: str | None = None,
-                 osver: str | None = None):
+                 osver: str | None = None, cfg: dict | None = None):
         self.http = http
         self.vault = vault
         self.msisdn = normalize_msisdn(msisdn)
@@ -318,11 +357,12 @@ class BimaClient:
         self.gaid = vault.gaid()
         self.req_time = None
         self.token = None      # sessionId sent as X-IMI-TOKENID
+        self.cfg = cfg or PROVIDER_CFG or PROVIDER_BIMA
 
     # baseline headers (ProjectHeaders.getHeaders map + ApiService additions) ---
     def baseline(self):
         return {
-            "Authorization": AUTHORIZATION,
+            "Authorization": self.cfg["authorization"],
             "Content-Type": "application/json",
             "Accept-Encoding": "gzip",
             "Connection": "close",
@@ -330,13 +370,13 @@ class BimaClient:
             "User-Agent": "",
             "X-DEVICEID": self.device_id,
             "X-DEVICENAME": self.device_name,
-            "X-IMI-App-OS": APP_OS,
+            "X-IMI-App-OS": self.cfg["app_os"],
             "X-IMI-App-OSVersion": self.osver,
             "X-IMI-App-OEM": self.oem,
             "X-IMI-App-Model": self.model,
-            "X-IMI-CHANNEL": CHANNEL,
-            "X-IMI-SERVICEKEY": SERVICEKEY,
-            "X-IMI-VERSION": APP_VERSION,
+            "X-IMI-CHANNEL": self.cfg["channel"],
+            "X-IMI-SERVICEKEY": self.cfg["servicekey"],
+            "X-IMI-VERSION": self.cfg["app_version"],
             "X-IMI-LANGUAGE": "EN",
             "X-LOW-QUOTA": "NO",
             "X-SPTRAVEL": "NO",
@@ -350,7 +390,7 @@ class BimaClient:
         h["X-IMI-UID"] = str(self.req_time)
         h["X-IMI-NETWORK"] = "WiFi"
         if self.child:                              # child line (RC4("123") hex)
-            h["X-IMI-CHILD-LINENO"] = rc4_hex(RC4_CHILD_KEY, self.child)
+            h["X-IMI-CHILD-LINENO"] = rc4_hex(self.cfg["rc4_child_key"], self.child)
         if self.token:
             h["X-IMI-TOKENID"] = self.token
         else:
@@ -371,8 +411,8 @@ class BimaClient:
         # "null" branch is defensive only (would need a manually cleared header map).
         hash_token = h.get("X-IMI-TOKENID", "null")
         h["X-IMI-HASH"] = sha512_hex(
-            who + SECRET + h["X-IMI-App-OS"] + SECRET + h["X-IMI-VERSION"] +
-            SECRET + hash_token + "&SALT=" + get_values(str(self.req_time))
+            who + self.cfg["secret"] + h["X-IMI-App-OS"] + self.cfg["secret"] + h["X-IMI-VERSION"] +
+            self.cfg["secret"] + hash_token + "&SALT=" + get_values(str(self.req_time))
         )
         # addOkHttpSignature guard is "X-IMI-TOKENID present" (not "logged in"):
         # verified decompile -> guest requests carry oauth over "{}" too, salted
@@ -424,7 +464,7 @@ class BimaClient:
 
     def validate_otp(self, transid: str, otp: str) -> str:
         inner = json.dumps({"transid": transid, "otp": otp}, separators=(",", ":"))
-        body = aes_gcm_encrypt(GCM_PINPUK_KEY, GCM_STATIC_IV, inner)
+        body = aes_gcm_encrypt(self.cfg["gcm_pinpuk_key"], self.cfg["gcm_static_iv"], inner)
         status, text = self._post("/otp/validate/v2", body)
         data = self._json(text)
         if status != 200 or not data:
@@ -599,7 +639,7 @@ def main():
     ap.add_argument("--oem", default=None, help="X-IMI-App-OEM (Build.MANUFACTURER)")
     ap.add_argument("--model", default=None, help="X-IMI-App-Model (Build.MODEL)")
     ap.add_argument("--osver", default=None, help="X-IMI-App-OSVersion (Build.VERSION.RELEASE)")
-    ap.add_argument("--base-url", default=BASE_DEFAULT)
+    ap.add_argument("--base-url", default=None)
     ap.add_argument("--user-agent", default=DEFAULT_UA)
     ap.add_argument("--timeout", type=float, default=45.0)
     ap.add_argument("--dry-run", action="store_true", help="build and print request, don't send")
@@ -609,6 +649,8 @@ def main():
     ap.add_argument("--verbose", "-v", action="store_true")
     ap.add_argument("--selftest", action="store_true", help="offline crypto self-check")
     args = ap.parse_args()
+    if args.base_url is None:
+        args.base_url = (PROVIDER_CFG or PROVIDER_BIMA)["base_default"]
 
     if args.selftest:
         selftest(args)
@@ -634,7 +676,8 @@ def main():
             "osver": dev_osv or prof.get("osver")})
     client = BimaClient(http, vault, args.msisdn, args.action, args.child, args.verbose,
                         device_id=dev_id, device_name=dev_nm,
-                        oem=dev_oem, model=dev_mod, osver=dev_osv)
+                        oem=dev_oem, model=dev_mod, osver=dev_osv,
+                        cfg=PROVIDER_CFG)
     client.fresh = args.fresh
 
     # dry-run: assemble one request fully then exit

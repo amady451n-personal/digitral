@@ -34,6 +34,8 @@ os.environ.setdefault("BIMA_HOME", _HOME_DEFAULT)
 import bima_balance as bm  # noqa: E402  (path: same scripts/ dir)
 
 # --- brand constants (decoded, see module docstring) ---------------------------
+bm.PROVIDER_CFG = bm.PROVIDER_MYIM3
+# legacy module-global overrides (kept for any external reader / selftest)
 bm.BRAND       = "myIM3"
 bm.BASE_DEFAULT = "https://myim3api1.ioh.co.id/api/v2"
 bm.SERVICEKEY  = "i4WxFMMLvWqnrvuAyg58"
