@@ -1,0 +1,785 @@
+# axisnet libnative-lib.so — JNI getter → embedded literal (ghidra 12.2, base 0x100000)
+# generated 2026-11-03; 272 functions
+
+Java_com_axis_net_ui_splashLogin_SplashActivity_stringFromJNI
+    Hello from C++
+
+Java_com_axis_net_ui_splashLogin_componens_OtpApiService_uOtp
+    https://otp.api.axis.co.id/v1/otp
+
+Java_com_axis_net_ui_splashLogin_componens_OtpApiService_xApikey
+    ipRsTxOLbgogxEiXj1P73JVWgQk9CEXMSuIsaFO8t6I=
+
+Java_com_axis_net_ui_homePage_home_data_api_HomeApiImpl_getBalanceUrl
+    https://balance.api.axis.co.id/getbalance
+
+Java_com_axis_net_ui_homePage_home_data_api_HomeApiImpl_getHomepageUrl
+    https://profile.api.axis.co.id/v1/bff/homepage
+
+Java_com_axis_net_ui_homePage_home_components_MainApiService_urlFcmToken
+    https://otp.api.axis.co.id/fcm
+
+Java_com_axis_net_ui_homePage_home_components_MainApiService_uQuota
+    https://quota.api.axis.co.id/quota
+
+Java_com_axis_net_ui_homePage_home_data_api_HomeApiImpl_uPromo
+    https://promo.api.axis.co.id/v3/banners
+
+Java_com_axis_net_ui_homePage_home_components_MainApiService_DynamicUi
+    https://promo.api.axis.co.id/dynamic-ui/v2
+
+Java_com_axis_net_ui_notification_components_NotificationApiService_notificationInbox
+    https://notification.api.axis.co.id/inbox
+
+Java_com_axis_net_ui_notification_components_NotificationApiService_notificationInboxDetail
+    https://notification.api.axis.co.id/inbox/details
+
+Java_com_axis_net_ui_notification_components_NotificationApiService_notificationAcceptOffer
+    https://trxpackages.api.axis.co.id/package/user/accept-offer
+
+Java_com_axis_net_payment_components_PaymentApiService_productDetail
+    https://packages.api.axis.co.id/getproductdetail/v3
+
+Java_com_axis_net_payment_components_PaymentApiService_paymentMethod
+    https://trxpayments.api.axis.co.id/method/v5
+
+Java_com_axis_net_ui_homePage_buyPackage_components_PackagesApiService_packageRefund
+    https://trxpackages.api.axis.co.id/package/refund
+
+Java_com_axis_net_ui_aigo_components_AigoApiService_checkAigo
+    https://new-aigo.api.axis.co.id/v1/checkaigo
+
+Java_com_axis_net_ui_aigo_components_AigoApiService_checkRedeemAigo
+    https://new-aigo.api.axis.co.id/v1/checkredeem
+
+Java_com_axis_net_ui_splashLogin_componens_OtpApiService_randomKey
+    ae432353a4eb4eb9
+
+Java_com_axis_net_ui_splashLogin_componens_OtpApiService_clientID
+    26NLLzLEZaLwngG0wUVI
+
+Java_com_axis_net_ui_splashLogin_componens_OtpApiService_clientSecret
+    gU8ya9VoMTFa0LYF3xkjVYpXAAGRwz
+
+Java_com_axis_net_ui_splashLogin_componens_OtpApiService_grantType
+    client_credentials
+
+Java_com_axis_net_ui_splashLogin_componens_OtpApiService_saltKey
+    ae432353a4eb4eb9
+
+Java_com_axis_net_ui_homePage_sureprize_components_SurepriseApiService_offerMccm
+    https://sureprize.api.axis.co.id/getoffermccm
+
+Java_com_axis_net_ui_splashLogin_componens_DisclaimerService_disclaimerCheck
+    https://user.api.axis.co.id/disclaimer/check
+
+Java_com_axis_net_ui_splashLogin_componens_DisclaimerService_disclaimerInsert
+    https://user.api.axis.co.id/disclaimer
+
+Java_com_axis_net_features_lockUnlock_repository_LockUnlockApiService_lockStatus
+    https://lockunlock.api.axis.co.id/lockstatus/sdp
+
+Java_com_axis_net_features_lockUnlock_repository_LockUnlockApiService_lock
+    https://lockunlock.api.axis.co.id/lock/sdp
+
+Java_com_axis_net_ui_contactUs_componens_ContactApiService_inquiry
+    https://inquiry.api.axis.co.id/
+
+Java_com_axis_net_ui_aigo_components_AigoApiService_redeemAigo
+    https://new-aigo.api.axis.co.id/v1/redeemaigo
+
+Java_com_axis_net_features_profile_services_ProfileRepository_userProfileGet
+    https://profile.api.axis.co.id/getuser
+
+Java_com_axis_net_features_profile_services_ProfileRepository_userProfileUpdate
+    https://profile.api.axis.co.id/updateuser
+
+Java_com_axis_net_ui_homePage_entertainment_api_GameTokenApiImplKt_urlUnipinVocherList
+    https://unipin.api.axis.co.id/timwe/voucher/list
+
+Java_com_axis_net_ui_homePage_entertainment_api_GameTokenApiImplKt_urlUnipinFlashTopUpList
+    https://unipin.api.axis.co.id/timwe/topup/list
+
+Java_com_axis_net_ui_homePage_entertainment_api_GameTokenApiImplKt_urlUnipinGameFavorit
+    https://unipin.api.axis.co.id/timwe/favorit
+
+Java_com_axis_net_ui_homePage_entertainment_components_EntertainmentApiService_urlEntertainmentSubcription
+    https://packages.api.axis.co.id/entertainment/category/v2
+
+Java_com_axis_net_ui_splashLogin_componens_ForgotMsisdnApiServices_urlForgotMsisdn
+    https://user.api.axis.co.id/forgot-msisdn
+
+Java_com_axis_net_dagger_modules_FirebaseApiModule_registerTokenFcmEncrypt
+    Ad3d37X71777c6e63C6a7433645Ma40X583470307W33053705b6f483U16845397279637d2J8523f694b483O9507579476738p61324b645332513q83a52S5
+
+Java_com_axis_net_helper_SharedPreferencesHelper_awsKeyOne
+    sha256/QUlGXRV6J4rA7eCYgyrMXC1wBAsqidpTKSAHsndh3SI=
+
+Java_com_axis_net_helper_SharedPreferencesHelper_awsKeyTwo
+    sha256/5kJvNEMw0KjrCAu7eXY5HZdvyCS13BbA0VJG1RSP91w=
+
+Java_com_axis_net_helper_SharedPreferencesHelper_awsKeyThree
+    sha256/r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=
+
+Java_com_axis_net_helper_SharedPreferencesHelper_keyOne
+    aws_key_one
+
+Java_com_axis_net_helper_SharedPreferencesHelper_keyTwo
+    aws_key_two
+
+Java_com_axis_net_helper_SharedPreferencesHelper_keyThree
+    aws_key_three
+
+Java_com_axis_net_helper_AxisnetHelpers_getSaltKey
+    ae432353a4eb4eb9
+
+Java_com_axis_net_helper_AxisnetHelpers_getMsisdnSaltKey
+    ae432353a4eb4eb9
+
+Java_com_axis_net_helper_AxisnetHelpers_getSecretKey
+    2eb9362dd64b1e56
+
+Java_com_axis_net_helper_AxisnetHelpers_getOtpCode
+    CaCS1KEquqk=\n
+
+Java_com_axis_net_helper_AxisnetHelpers_getPos1
+    AgdC3Dd37i69h355m15B656St5d4s252pZ6462l7z37fk4b675a4v7784x87134z367
+
+Java_com_axis_net_helper_AxisnetHelpers_getPos2
+    Ad395f533t1587d21j393579n51X6a44C3f654Z17b64376642G327377D394160737F54c493d6178W485a744e6Re42453b4y37
+
+Java_com_axis_net_helper_AxisnetHelpers_getPos3
+    Ad3t555s767re6Z7314x3636G15f536J
+
+Java_com_axis_net_helper_AxisnetHelpers_getPos4
+    Ad3td314as595a5r55076v5a413dx6449y75C407D56dt456669s4A8454e4
+
+Java_com_axis_net_helper_AxisnetHelpers_getPos5
+    Ad3td3764s6a654rd6d29v3d463x24a6y64Cf455Db4t4475a6s7A566f6e4
+
+Java_com_axis_net_helper_AxisnetHelpers_getPos6
+    Ad3d3X15c45355dz60536v6517d413m44d673J6553a775b6K9E35576a61T7b443Uc63307468y426e4b686i975537273p3f543q73a61324b6453R3251383a525
+
+Java_com_axis_net_helper_AxisnetHelpers_getPos7
+    Ad3d3X76665745u97f5556435461p375145r3549H3a65485e4JE56078765V2633d2a71N7379724e40j323544585f484av547b6861324mb64533251w383a52z5
+
+Java_com_axis_net_helper_AxisnetHelpers_getPos9
+    5LuLv64KzyK656HwtHJ35GxG54S4tACA4
+
+Java_com_axis_net_helper_AxisnetHelpers_getPos10
+    2FtEyF43DKoJzD45SzS4TA
+
+Java_com_axis_net_helper_AxisnetHelpers_getPos11
+    7r6tEe6EGgD9pS64E6h46z1A6r0t5Cf6ze4k
+
+Java_com_axis_net_helper_AxisnetHelpers_getAppsFlayerKey
+    ru953xhEQTEVtzP3bGWBDG
+
+Java_com_axis_net_helper_AxisnetHelpers_getPassword
+    52c9abe3bcc73193282995ba27c3d30c
+
+Java_com_axis_net_helper_AxisnetHelpers_getUrlQrCode
+    https://image-charts.com/chart?cht=qr&chs=420x420&choe=UTF-8&chl=
+
+Java_com_axis_net_helper_AxisnetHelpers_getDriveBaseUrl
+    https://drive.google.com/uc?
+
+Java_com_axis_net_helper_AxisnetHelpers_getUrlDrawable
+    https://drive.google.com/open?
+
+Java_com_axis_net_helper_AxisnetHelpers_getHostname
+    my.axisnet.id
+
+Java_com_axis_net_helper_AxisnetHelpers_getNewHostname
+    my-test.axisnet.id
+
+Java_com_axis_net_helper_AxisnetHelpers_getNewAccessToken
+    accesstoken
+
+Java_com_axis_net_helper_AxisnetHelpers_getAutorepurchaseKey
+    eyJzZXJ2aWNlX2lkIjogIjMyMTMxNzcifQ==
+
+Java_com_axis_net_ui_homePage_byop_components_CustomPackageApiService_getUrlWishlistCustomPackage
+    https://custom-packages.api.axis.co.id/favorite
+
+Java_com_axis_net_ui_homePage_byop_components_CustomPackageApiService_getUrlWishlistDelete
+    https://custom-packages.api.axis.co.id/custom/favorites/delete/
+
+Java_com_axis_net_ui_homePage_byop_components_CustomPackageApiService_getUrlListFavorite
+    https://custom-packages.api.axis.co.id/custom/favorites/list
+
+Java_com_axis_net_helper_Client_getHostName
+    api.axis.co.id
+
+Java_com_axis_net_helper_Client_awsKeyOne
+    sha256/QUlGXRV6J4rA7eCYgyrMXC1wBAsqidpTKSAHsndh3SI=
+
+Java_com_axis_net_helper_Client_awsKeyTwo
+    sha256/5kJvNEMw0KjrCAu7eXY5HZdvyCS13BbA0VJG1RSP91w=
+
+Java_com_axis_net_helper_Client_awsKeyThree
+    sha256/r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=
+
+Java_com_axis_net_initializer_TrackingInitializer_getMoengageKey
+    N62T4KPKXUSNAHEQCVJXEJP8
+
+Java_com_axis_net_initializer_helper_MoeFirebaseIntegration_getMoengageKey
+    N62T4KPKXUSNAHEQCVJXEJP8
+
+Java_com_axis_net_initializer_helper_MoeFirebaseIntegration_getSenderIdKey
+    61196017020
+
+Java_com_axis_net_ui_transferQuota_components_TransferQuotaApiService_getSendQuota
+    https://sendquota.api.axis.co.id/send-quota
+
+Java_com_axis_net_ui_transferQuota_components_TransferQuotaApiService_detailTransferQuota
+    https://sendquota.api.axis.co.id/detail-transfer
+
+Java_com_axis_net_features_rekreaxis_repository_RekreaxisRepository_urlAxisSantai
+    https://packages.api.axis.co.id/packages/entertaiment
+
+Java_com_axis_net_ui_homePage_buyPackage_payro_PayRoApiService_urlPayRoCancel
+    https://trxmultipayments.api.axis.co.id/payment/payro/cancel/v1
+
+Java_com_axis_net_ui_homePage_buyPackage_payro_PayRoApiService_urlPayRoLocation
+    https://trxmultipayments.api.axis.co.id/payment/payro/location/v1
+
+Java_com_axis_net_ui_homePage_voucherku_components_VoucherkuApiServices_singleDeliveryVoucher
+    https://packages.api.axis.co.id/single-delivery-voucher
+
+Java_com_axis_net_ui_homePage_voucherku_components_VoucherkuApiServices_unseenPremiumVoucherUrl
+    https://packages.api.axis.co.id/unseen/notif/voucher
+
+Java_com_axis_net_ui_homePage_voucherku_components_VoucherkuApiServices_voucherUrl
+    https://voucher.api.axis.co.id/v1/list
+
+Java_com_axis_net_ui_homePage_voucherku_components_VoucherkuApiServices_voucherDetailUrl
+    https://voucher.api.axis.co.id/v1
+
+Java_com_axis_net_ui_homePage_voucherku_components_VoucherkuApiServices_voucherApplyUrl
+    https://voucher.api.axis.co.id/v1/apply
+
+Java_com_axis_net_ui_homePage_entertainment_components_EntertainmentApiService_urlGetFreeQuota
+    https://toggle.api.axis.co.id/toggle
+
+Java_com_axis_net_ui_homePage_voucherku_components_VoucherkuApiServices_voucherBonusUrl
+    https://voucher.api.axis.co.id/v3/bonus
+
+Java_com_axis_net_payment_components_PaymentApiService_getInquiry
+    https://order.api.axis.co.id/v1/inquiry
+
+Java_com_axis_net_features_order_services_OrderApiService_orderStatusUrl
+    https://order.api.axis.co.id/v1/status
+
+Java_com_axis_net_ui_homePage_voucherku_components_VoucherkuApiServices_voucherClaimUrl
+    https://voucher.api.axis.co.id/v1/claim
+
+Java_com_axis_net_features_promo_services_PromoApiService_promoUrl
+    https://promo.api.axis.co.id/banners
+
+Java_com_axis_net_config_Signature_keyTempest
+    hOc36lLcbQ8JLLGvhekVMVGy0w9hTM9EazVL1Z2aF9BiUG5Ov88rQg==
+
+Java_com_axis_net_config_Signature_apiKey
+    ipRsTxOLbgogxEiXj1P73JVWgQk9CEXMSuIsaFO8t6I=
+
+Java_com_axis_net_features_tokenisasi_services_TokenisasiApiService_getUrleWalletLinked
+    https://trxpayments.api.axis.co.id/account/linked/list
+
+Java_com_axis_net_config_Signature_keyTempestCapital
+    d9kKoBWgOltACb1_e7kjkYxD6HaX1eVQ9Ap0xh3xcetx__gFYyStSRw2x5t54y9VBl7xZ5dIDZqcEtYpxTzLHyuQaBvNrPkl
+
+Java_com_axis_net_config_Signature_keyTempestMarket
+    VEOXH8EAnFARSFDtbNnvxA==
+
+Java_com_axis_net_config_Signature_keyTempestMarketCapital
+    bA7mQfB73531XTWqAt4ItWgEARlLPqrLNOiuznUg0QZ3kO4I8beMwgQT066-ulysRzQTvflCIPsr52R9E4iNbq3IXUNwP9wp
+
+Java_com_axis_net_ui_splashLogin_componens_AuthApiService_createTokenAutoLoginUrl
+    https://ns.api.axis.co.id/v1/al/create-token
+
+Java_com_axis_net_ui_splashLogin_componens_AuthApiService_otpLoginUrl
+    https://otp.api.axis.co.id/otplogin/v2
+
+Java_com_axis_net_ui_splashLogin_componens_AuthApiService_otpUrl
+    https://otp.api.axis.co.id/v1/otp
+
+Java_com_axis_net_ui_splashLogin_componens_AuthApiService_xApiKey
+    ipRsTxOLbgogxEiXj1P73JVWgQk9CEXMSuIsaFO8t6I=
+
+Java_com_axis_net_ui_splashLogin_componens_AuthApiService_logoutUrl
+    https://otp.api.axis.co.id/logout
+
+Java_com_axis_net_payment_repository_CrossSellRepository_getCrossSellUrl
+    https://products.api.axis.co.id/v1/cross-sell
+
+Java_com_axis_net_helper_AxisnetHelpers_getXenditStagingKey
+    xnd_public_development_qR214GRZORiVp7CmaF9y52JXnBWY8b3p3mgaRfpMfQnpsI9uy4R9nvtODKoOxy:
+
+Java_com_axis_net_helper_AxisnetHelpers_getXenditProductionKey
+    xnd_public_production_JHs7lBxKLamMtjjlVPDsREAHACQtPrUyYUt4N7Fc33fbNQA4S59jdR2JWDtuI:
+
+Java_com_axis_net_ui_gameToken_repository_GameTokenDetailRepository_getUserValidationUrl
+    https://trxunipin.api.axis.co.id/timwe/validuser
+
+Java_com_axis_net_ui_gameToken_repository_GameTokenDetailRepository_getGameTokenDetailUrl
+    https://unipin.api.axis.co.id/timwe/detail
+
+Java_com_axis_net_features_promo_services_PromoApiService_tncUrl
+    https://promo.api.axis.co.id/tnc/v2
+
+Java_com_axis_net_features_alifetime_general_repositories_ProfileSectionRepository_alifetimeClaimBonusUrl
+    https://order.api.axis.co.id/v1/transaction/redeem/alifetime
+
+Java_com_axis_net_features_alifetime_general_repositories_ProfileSectionRepository_getPointHistoryUrl
+    https://points.api.axis.co.id/v1/alifetime/history
+
+Java_com_axis_net_features_myPackageDetail_services_MyPackageRepository_newQuotaUrl
+    https://nq.api.axis.co.id/v1/quota
+
+Java_com_axis_net_features_myPackageDetail_services_MyPackageRepository_quotaHomePage
+    https://nq.api.axis.co.id/v1/quota/homepage
+
+Java_com_axis_net_features_myPackageDetail_services_MyPackageRepository_newQuotaBonusUrl
+    https://nq.api.axis.co.id/v1/quota/bonus
+
+Java_com_axis_net_features_myPackageDetail_services_MyPackageRepository_newQuotaInfoCityUrl
+    https://profile.api.axis.co.id/v1/location
+
+Java_com_axis_net_features_myPackageDetail_services_MyPackageRepository_stopPackageUrl
+    https://trxpackages.api.axis.co.id/package/stop
+
+Java_com_axis_net_features_digitalVoucher_services_DigitalVoucherRepository_getDigitalVoucherUrl
+    https://digital-voucher.api.axis.co.id/v1/list
+
+Java_com_axis_net_features_digitalVoucher_services_DigitalVoucherRepository_activateDigitalVoucherUrl
+    https://digital-voucher.api.axis.co.id/v1/redeem
+
+Java_com_axis_net_features_analytics_repository_AnalyticRepository_sendEventUrl
+    https://analytics.api.axis.co.id/v1/event
+
+Java_com_axis_net_features_myPackageDetail_services_MyPackageRepository_quitQuotaAkrabUrl
+    https://nq.api.axis.co.id/v1/quota/akrab/exit
+
+Java_com_axis_net_features_myPackageDetail_services_MyPackageRepository_quotaPlayPause
+    https://nq.api.axis.co.id/v1/quota/playpause
+
+Java_com_axis_net_ui_homePage_home_data_api_HomeApiImpl_getHomeJustForYouUrl
+    https://products.api.axis.co.id/v1/home
+
+Java_com_axis_net_features_promo_services_PromoApiService_pageBannerImageUrl
+    https://promo.api.axis.co.id/v1/page-banner
+
+Java_com_axis_net_features_profile_services_ProfileRepository_userProfileListAvatar
+    https://profile.api.axis.co.id/list/avatar
+
+Java_com_axis_net_features_transferBalance_services_TransferBalanceRepository_transferBalanceUrl
+    https://pkgbalance.api.axis.co.id/send-credit
+
+Java_com_axis_net_features_transferBalance_services_TransferBalanceRepository_otpTransferBalanceUrl
+    https://pkgbalance.api.axis.co.id/send-otp
+
+Java_com_axis_net_features_transferQuota_services_TransferQuotaRepository_otpTransferQuotaUrl
+    https://sendquota.api.axis.co.id/send-quota/otp
+
+Java_com_axis_net_features_transferQuota_services_TransferQuotaRepository_transferQuotaUrl
+    https://sendquota.api.axis.co.id/transfer-quota
+
+Java_com_axis_net_features_myPackageDetail_services_MyPackageRepository_quitXLSatuMemberUrl
+    https://nq.api.axis.co.id/v1/quota/xlsatu/exit
+
+Java_com_axis_net_features_quotaDonation_repositories_QuotaDonationRepository_donationListUrl
+    https://products.api.axis.co.id/v1/donation
+
+Java_com_axis_net_features_quotaDonation_repositories_QuotaDonationRepository_postDonationUrl
+    https://sendquota.api.axis.co.id/transfer-quota/donation
+
+Java_com_axis_net_features_payment_services_PaymentRepository_paymentMethod
+    https://trxpayments.api.axis.co.id/method/v5
+
+Java_com_axis_net_features_products_services_ProductRepository_productCategoriesUrl
+    https://products.api.axis.co.id/v1/categories
+
+Java_com_axis_net_features_products_services_ProductRepository_productsUrl
+    https://products.api.axis.co.id/v1/product-by-categories
+
+Java_com_axis_net_features_products_services_ProductRepository_productBannersUrl
+    https://promo.api.axis.co.id/v2/banners
+
+Java_com_axis_net_features_products_services_ProductRepository_historyBuyUrl
+    https://trxhistory.api.axis.co.id/v4?Jenis_Transaksi=&Metode_Pembayaran=
+
+Java_com_axis_net_features_products_services_ProductRepository_recommendedProductUrl
+    https://products.api.axis.co.id/v1/promo
+
+Java_com_axis_net_features_payment_services_PackageDetailRepository_productDetail
+    https://packages.api.axis.co.id/getproductdetail/v3
+
+Java_com_axis_net_features_payment_services_PackageDetailRepository_newProductDetail
+    https://products.api.axis.co.id/v1/product-detail
+
+Java_com_axis_net_features_payment_services_PackageDetailRepository_getInquiry
+    https://order.api.axis.co.id/v1/inquiry
+
+Java_com_axis_net_features_payment_services_PackageDetailRepository_urlUnipinTopupValidUser
+    https://trxunipin.api.axis.co.id/timwe/validuser
+
+Java_com_axis_net_features_products_services_ProductRepository_packageRecommendedUrl
+    https://sureprize.api.axis.co.id/best-offer
+
+Java_com_axis_net_features_autorepurchase_repository_AutoRepurchaseRepository_autoRepurchaseStatusUrl
+    https://trxpayments.api.axis.co.id/repurchase/get
+
+Java_com_axis_net_features_autorepurchase_repository_AutoRepurchaseRepository_autoRepurchaseListUrl
+    https://trxpayments.api.axis.co.id/repurchase/list
+
+Java_com_axis_net_features_autorepurchase_repository_AutoRepurchaseRepository_autoRepurchaseRemoveUrl
+    https://trxpayments.api.axis.co.id/repurchase/cancel
+
+Java_com_axis_net_features_favorite_repository_FavoriteRepository_addFavoritePackageUrl
+    https://custom-packages.api.axis.co.id/favorite
+
+Java_com_axis_net_features_favorite_repository_FavoriteRepository_deleteFavoritePackageUrl
+    https://custom-packages.api.axis.co.id/custom/favorites/delete/
+
+Java_com_axis_net_features_favorite_repository_FavoriteRepository_getFavoritePackagesUrl
+    https://custom-packages.api.axis.co.id/custom/favorites/list
+
+Java_com_axis_net_features_payment_services_PayroRepository_urlPayroOrder
+    https://trxmultipayments.api.axis.co.id/payment/payro/order/v1
+
+Java_com_axis_net_payment_components_PaymentApiService_getOTPBalanceGT
+    https://trxunipin.api.axis.co.id/timwe/paymentpulsa/otp
+
+Java_com_axis_net_payment_components_PaymentApiService_getOTPBalanceGifting
+    https://trxgift.api.axis.co.id/giftcheck
+
+Java_com_axis_net_payment_components_PaymentApiService_postBalanceGifting
+    https://trxgift.api.axis.co.id/giftvalidation/v3
+
+Java_com_axis_net_features_ccdc_services_CCDCRepository_buyPackageCCDCUrl
+    https://trxmultipayments.api.axis.co.id/payment/ccdc
+
+Java_com_axis_net_features_ccdc_services_CCDCRepository_buyPackageMccmCCDCUrl
+    https://trxmultipayments.api.axis.co.id/payment/ccdc/mccm
+
+Java_com_axis_net_features_ccdc_services_CCDCRepository_topUpBalanceCCDCUrl
+    https://trxmultipayments.api.axis.co.id/payment/ccdc/balance
+
+Java_com_axis_net_features_ccdc_services_CCDCRepository_byopCCDCUrl
+    https://trxmultipayments.api.axis.co.id/payment/ccdc/byop
+
+Java_com_axis_net_features_ccdc_services_CCDCRepository_gameTokenCCDCUrl
+    https://trxmultipayments.api.axis.co.id/payment/ccdc/gt
+
+Java_com_axis_net_features_payment_services_BalanceRefundableRepository_clearCacheUrl
+    https://nq.api.axis.co.id/v1/cache/clear
+
+Java_com_axis_net_payment_components_PaymentApiService_balanceUrl
+    https://balance.api.axis.co.id/getbalance
+
+Java_com_axis_net_utility_DeeplinkHandler_productDeeplinkKey
+    C6EwP6Rw4OeYajoNm7imW9LUWlQll0A=
+
+Java_com_axis_net_features_alifetime_general_repositories_ProfileSectionRepository_flashWarInfoUrl
+    https://flashwar.api.axis.co.id/v1/info
+
+Java_com_axis_net_features_flashwar_services_FWRepository_flashWarPurchaseTicketUrl
+    https://flashwar.api.axis.co.id/v1/purchase-ticket
+
+Java_com_axis_net_features_flashwar_services_FWRepository_flashWarListBonusUrl
+    https://flashwar.api.axis.co.id/v1/list-bonus
+
+Java_com_axis_net_features_flashwar_services_FWRepository_flashWarRedeemBonusUrl
+    https://flashwar.api.axis.co.id/v1/claim-bonus
+
+Java_com_axis_net_config_RequestInterceptor_hostNameProduction
+    api.axis.co.id
+
+Java_com_axis_net_config_RequestInterceptor_hostNameStaging
+    staging-api.axis.co.id
+
+Java_com_axis_net_config_RequestInterceptor_hostNameUat
+    uat-api.axis.co.id
+
+Java_com_axis_net_config_RequestInterceptor_hostNameNew
+    new-api.axis.co.id
+
+Java_com_axis_net_features_profile_services_ProfileRepository_userDigitalMutant
+    https://profile.api.axis.co.id/mutant
+
+Java_com_axis_net_config_Signature_keyTempestGuardian
+    C6EwP6Rw4OeYajoNm7imW9LUWlQll0A=
+
+Java_com_axis_net_features_products_services_ProductRepository_productHistoryUrl
+    https://trxhistory.api.axis.co.id/v3?Jenis_Transaksi=&Metode_Pembayaran=
+
+Java_com_axis_net_ui_homePage_buyPackage_components_PackagesApiService_claimSureprizeUrl
+    https://order.api.axis.co.id/v1/claim/sureprize
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_getLevelProfileUrl
+    https://profile.api.axis.co.id/v1/alifetime
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_getMigrationAlifetimeUrl
+    https://profile.api.axis.co.id/v1/alifetime/migration
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_getCoinProfileUrl
+    https://points.api.axis.co.id/v1/alifetime
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_putLevelUpUrl
+    https://profile.api.axis.co.id/v1/alifetime/level-up
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_getRewardAlifetimeUrl
+    https://profile.api.axis.co.id/v1/alifetime/bonus
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_flashWarInfoUrl
+    https://flashwar.api.axis.co.id/v1/info
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_claimBonusAlifetimeUrl
+    https://order.api.axis.co.id/v1/transaction/redeem/alifetime
+
+Java_com_axis_net_features_products_services_ProductRepository_bundlingProduct
+    https://products.api.axis.co.id/v1/special-bundling
+
+Java_com_axis_net_features_registrations_services_RegistrationService_getCheckNumberPrefixUrl
+    https://user.api.axis.co.id/prefix
+
+Java_com_axis_net_features_registrations_services_RegistrationService_getRegisterNumberUrl
+    https://user.api.axis.co.id/registration
+
+Java_com_axis_net_features_transferBalance_services_TransferBalanceRepository_transferCheckCreditUrl
+    https://pkgbalance.api.axis.co.id/check-credit
+
+Java_com_axis_net_features_products_services_ProductRepository_productFilterUrl
+    https://products.api.axis.co.id/v1/filter
+
+Java_com_axis_net_features_byop_recommendation_services_ByopRecommendationRepository_byopRecommendationUrl
+    https://products.api.axis.co.id/v2/byop/recommendation
+
+Java_com_axis_net_features_byop_recommendation_services_ByopRecommendationRepository_byopCategoriesUrl
+    https://products.api.axis.co.id/v1/byop/categories
+
+Java_com_axis_net_features_byop_confirmation_services_ByopConfirmationRepository_getByopSummaryNewUrl
+    https://order.api.axis.co.id/v1/transaction/summary-byop
+
+Java_com_axis_net_features_byop_confirmation_services_ByopConfirmationRepository_byopValidationUrl
+    https://persona.api.axis.co.id/validation-name-byop
+
+Java_com_axis_net_nativelib_api_packagebalance_PackageBalanceApiImpl_getTopUpBalancePackageApi
+    https://pkgbalance.api.axis.co.id/packages
+
+Java_com_axis_net_nativelib_NativeLibImpl_getSaltKey
+    ae432353a4eb4eb9
+
+Java_com_axis_net_nativelib_NativeLibImpl_getAlgorithmKey
+    5LuLv64KzyK656HwtHJ35GxG54S4tACA4
+
+Java_com_axis_net_nativelib_NativeLibImpl_getModeKey
+    2FtEyF43DKoJzD45SzS4TA
+
+Java_com_axis_net_nativelib_NativeLibImpl_getPaddingKey
+    7r6tEe6EGgD9pS64E6h46z1A6r0t5Cf6ze4k
+
+Java_com_axis_net_payment_components_PaymentApiService_getServiceFee
+    https://order.api.axis.co.id/v1/transaction/fee/
+
+Java_com_axis_net_nativelib_api_product_ProductApiImpl_getByopMainQuotaApiUrl
+    https://products.api.axis.co.id/v1/product-byop/main-quota
+
+Java_com_axis_net_nativelib_api_product_ProductApiImpl_getByopAddOnApiUrl
+    https://products.api.axis.co.id/v1/product-byop/addon
+
+Java_com_axis_net_nativelib_api_product_ProductApiImpl_getByopPredefinedApiUrl
+    https://products.api.axis.co.id/v1/byop/recommendation/details
+
+Java_com_axis_net_nativelib_api_notification_NotificationApiImpl_getNotificationApiUrl
+    https://notification.api.axis.co.id/inbox
+
+Java_com_axis_net_nativelib_api_iou_IouApiImpl_getIouTncUrl
+    https://paylater-iou.api.axis.co.id/v1/iou/term-condition
+
+Java_com_axis_net_nativelib_api_iou_IouApiImpl_getIouHistoryUrl
+    https://paylater-iou.api.axis.co.id/v1/iou/profile
+
+Java_com_axis_net_nativelib_api_iou_IouApiImpl_getIouDenomUrl
+    https://paylater-iou.api.axis.co.id/v1/iou/packages
+
+Java_com_axis_net_nativelib_api_iou_IouApiImpl_getIouPaymentCheckUrl
+    https://paylater-iou.api.axis.co.id/v1/iou/payment/info
+
+Java_com_axis_net_features_dataLoan_api_DataLoanApiImpl_getDataLoanUrl
+    https://paylater-iou.api.axis.co.id/v1/iou/data/loan
+
+Java_com_axis_net_nativelib_api_trxHistory_TrxHistoryApiImpl_getListHistoryUrl
+    https://trxhistory.api.axis.co.id/v1/
+
+Java_com_axis_net_nativelib_api_trxHistory_TrxHistoryApiImpl_getHistoryDetailUrl
+    https://trxhistory.api.axis.co.id/v1/detail/
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_alifetimeMultipleTncUrl
+    https://promo.api.axis.co.id/tnc/v2
+
+Java_com_axis_net_nativelib_api_sureprize_SureprizeApiImpl_getOfferMccmApi
+    https://sureprize.api.axis.co.id/getoffermccm
+
+Java_com_axis_net_nativelib_api_sureprize_SureprizeApiImpl_getClaimSureprizeApi
+    https://order.api.axis.co.id/v1/claim/sureprize
+
+Java_com_axis_net_nativelib_api_topupsureprize_TopUpSureprizeApiImpl_getBonusReloadApi
+    https://products.api.axis.co.id/v1/bonus-reload
+
+Java_com_axis_net_nativelib_api_topupsureprize_TopUpSureprizeApiImpl_getClaimTopUpApi
+    https://order.api.axis.co.id/v1/claim/reload
+
+Java_com_axis_net_nativelib_api_topupsureprize_TopUpSureprizeApiImpl_getClaimUmbApi
+    https://order.api.axis.co.id/v1/claim/umb
+
+Java_com_axis_net_nativelib_api_bonus_BonusesApiImpl_bonusesUrl
+    https://voucher.api.axis.co.id/v3/bonus
+
+Java_com_axis_net_nativelib_api_bonus_BonusesApiImpl_bonusLocalQuotaUrl
+    https://voucher.api.axis.co.id/v3/bonus/quota-info
+
+Java_com_axis_net_nativelib_api_bonus_BonusesApiImpl_claimBonusUrl
+    https://order.api.axis.co.id/v1/claim/bonus-nonstop
+
+Java_com_axis_net_features_reactivations_api_ReactivationApiImpl_checkIccidUrl
+    https://ns.api.axis.co.id/v1/reactivate/validate/iccid
+
+Java_com_axis_net_features_reactivations_api_ReactivationApiImpl_validateImei
+    https://ns.api.axis.co.id/v1/reactivate/validate/imei
+
+Java_com_axis_net_features_reactivations_api_ReactivationApiImpl_validateNik
+    https://ns.api.axis.co.id/v1/reactivate/validate/nik
+
+Java_com_axis_net_features_reactivations_api_ReactivationApiImpl_provisioning
+    https://ns.api.axis.co.id/v1/reactivate/provisioning
+
+Java_com_axis_net_features_registrations_services_RegistrationService_getPreRegisterNumberUrl
+    https://user.api.axis.co.id/preregistration-liveness
+
+Java_com_axis_net_features_registrations_services_RegistrationService_getPostRegisterNumberUrl
+    https://user.api.axis.co.id/registration-liveness
+
+Java_com_axis_net_features_reactivations_api_ReactivationApiImpl_checkNumberReactivation
+    https://ns.api.axis.co.id/v1/reactivate/validate/msisdn
+
+Java_com_axis_net_ui_splashLogin_componens_AuthApiService_biometricRequestOTPUrl
+    https://otp.api.axis.co.id/v1/login/biometric/request-otp
+
+Java_com_axis_net_ui_splashLogin_componens_AuthApiService_biometricValidateOTPUrl
+    https://otp.api.axis.co.id/v1/login/biometric/validate-otp
+
+Java_com_axis_net_ui_splashLogin_componens_AuthApiService_biometricLoginUrl
+    https://otp.api.axis.co.id/v1/login/biometric
+
+Java_com_axis_net_features_balanceConvert_api_BalanceConvertApiImplKt_urlGetBalanceConvert
+    https://products.api.axis.co.id/v1/convert-balance
+
+Java_com_axis_net_features_balanceConvert_api_BalanceConvertApiImplKt_urlProceedBalanceConvert
+    https://order.api.axis.co.id/v1/transaction/convert-balance
+
+Java_com_axis_net_features_payment_services_PackageDetailRepository_checkGiftNumber
+    https://products.api.axis.co.id/v1/check-gift
+
+Java_com_axis_net_ui_homePage_home_data_api_HomeApiImpl_offerProduct5GUrl
+    https://products.api.axis.co.id/v1/home/product/5g
+
+Java_com_axis_net_nativelib_api_bonus_BonusesApiImpl_mccmParadeBonusUrl
+    https://order.api.axis.co.id/v1/claim/parade-bonus
+
+Java_com_axis_net_features_playground_stamp_data_api_StampApiImpl_getListStampUrl
+    https://stamp.api.axis.co.id/v1/stamp
+
+Java_com_axis_net_features_playground_stamp_data_api_StampApiImpl_getListStampBonusUrl
+    https://stamp.api.axis.co.id/v1/stamp/bonus
+
+Java_com_axis_net_features_playground_stamp_data_api_StampApiImpl_redeemStampBonusUrl
+    https://stamp.api.axis.co.id/v1/stamp/redeem
+
+Java_com_axis_net_features_playground_stamp_data_api_StampApiImpl_getStampMissionsUrl
+    https://stamp.api.axis.co.id/v1/stamp/mission
+
+Java_com_axis_net_features_playground_stamp_data_api_StampApiImpl_resetStampBonusUrl
+    https://stamp.api.axis.co.id/v1/stamp/reset
+
+Java_com_axis_net_features_simReplacement_data_api_SimReplaceApiImpl_checkNumberForSimReplacementUrl
+    https://user.api.axis.co.id/sim-replacement/check-number
+
+Java_com_axis_net_features_simReplacement_data_api_SimReplaceApiImpl_sentIccidSimReplacementUrl
+    https://user.api.axis.co.id/sim-replacement/iccid
+
+Java_com_axis_net_features_simReplacement_data_api_SimReplaceApiImpl_sentNikSimReplacementUrl
+    https://user.api.axis.co.id/sim-replacement/nik
+
+Java_com_axis_net_nativelib_api_miniProgram_MiniProgramApiImpl_miniProgramAuthUrl
+    https://identity.api.axis.co.id/v1/auth-code/super-apps
+
+Java_com_axis_net_ui_homePage_entertainment_components_EntertainmentApiService_urlEntertainment
+    https://products.api.axis.co.id/v1/entertainment/detail
+
+Java_com_axis_net_ui_homePage_entertainment_components_EntertainmentApiService_urlEntertainmentList
+    https://products.api.axis.co.id/v1/entertainment/category
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_getVoucherAlifetimeUrl
+    https://profile.api.axis.co.id/v1/alifetime/bonus/voucher
+
+Java_com_axis_net_features_profile_services_ProfileRepository_userProfileFirstLogin
+    https://profile.api.axis.co.id/v1/check-first-login
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_getBonusAlifetimeUrl
+    https://profile.api.axis.co.id/v2/alifetime/bonus
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_getBonusAlifetimeProfilingUrl
+    https://profile.api.axis.co.id/v2/alifetime/bonus/profiling
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_getVoucherAlifetimeV2Url
+    https://profile.api.axis.co.id/v2/alifetime/bonus/voucher
+
+Java_com_axis_net_features_alifetime_dashboard_repositories_AlifetimeDashboardRepository_getAlifetimeMembershipUrl
+    https://points.api.axis.co.id/v2/alifetime/point
+
+Java_com_axis_net_helper_miniProgram_utils_MiniGameIdKt_miniGameIlinkAppId
+    ilinkapp_0600002d0f8c67
+
+Java_com_axis_net_helper_miniProgram_utils_MiniGameIdKt_miniGameAppId
+    wx230566bef801e661
+
+Java_com_axis_net_helper_miniProgram_utils_MiniGameIdKt_miniGameAdAppId
+    2037459711200079872
+
+Java_com_axis_net_ui_homePage_home_data_api_HomeApiImpl_getHomeGeminiUrl
+    https://products.api.axis.co.id/v1/gemini/dashboard
+
+Java_com_axis_net_nativelib_api_gemini_GeminiApiImpl_geminiStatusUrl
+    https://products.api.axis.co.id/v1/gemini/landing-page
+
+Java_com_axis_net_nativelib_api_gemini_GeminiApiImpl_geminiCancelUrl
+    https://products.api.axis.co.id/v1/gemini/cancel
+
+Java_com_axis_net_nativelib_api_gemini_GeminiApiImpl_geminiActivateUrl
+    https://products.api.axis.co.id/v1/gemini/activate
+
+Java_com_axis_net_ui_homePage_home_data_api_HomeApiImpl_getBenefitSeruUrl
+    https://products.api.axis.co.id/v1/benefit-partner/homepage
+
+Java_com_axis_net_ui_homePage_home_data_api_HomeApiImpl_getContextualInfoUrl
+    https://products.api.axis.co.id/v1/contextual-info/homepage
+
+Java_com_axis_net_nativelib_api_bonus_BonusesApiImpl_paradeBonusUrl
+    https://voucher.api.axis.co.id/v1/bonus-parade
+
+Java_com_axis_net_ui_homePage_home_data_api_HomeApiImpl_getBannerFeatureUrl
+    https://promo.api.axis.co.id/v1/highlight/banners
+
+Java_com_axis_net_ui_homePage_home_data_api_HomeApiImpl_updateFcmTokenUrl
+    https://otp.api.axis.co.id/fcm
+
+Java_com_axis_net_ui_homePage_home_data_api_HomeApiImpl_updateFcmKey
+    ipRsTxOLbgogxEiXj1P73JVWgQk9CEXMSuIsaFO8t6I=
+
+Java_com_axis_net_ui_homePage_home_data_api_HomeApiImpl_getHistoryHomeProductUrl
+    https://trxhistory.api.axis.co.id/v4/homepage?Jenis_Transaksi=&Metode_Pembayaran=
+
+Java_com_axis_net_nativelib_api_iou_IouApiImpl_getDataLoanSummaryUrl
+    https://paylater-iou.api.axis.co.id/v1/iou/loan-data/repayment

@@ -45,7 +45,38 @@ myIM3 (2026-10-29: dex static-field decoder validated against bima+).
   `docs/bima-protocol.md` §15 and committed: `scripts/dex_static_fields.py`,
   `docs/axisnet-jni-surface.txt`.
 
+## 2026-11-03b — axisnet constants unlocked via Ghidra in Docker
+
+User direction: providers are per-app (bima+/myIM3 vs axisnet/myXL share holding but not
+stack); use the Ghidra/Hopper route **inside Docker only — nothing installed on the host**.
+
+Built `ghidra-headless` image (Dockerfile at `scripts/ghidra-docker/`): temurin **25-jdk**
+base (Ghidra 12.2 launch rejects JDK 21/24 with "unsupported java version") + latest
+Ghidra release zip fetched inside the container. Headless worked with a Java post-script
+(`DecompileByPrefix.java` — **Groovy is not a core Ghidra script provider**, only Java/Python).
+Import of `libnative-lib.so` (arm64, 440 KB) analyzed in ~1 min.
+
+Result — the prior "values are runtime-only" conclusion was wrong:
+1. Every one of the 272 JNI getters is a trivial literal→`NewStringUTF` wrapper.
+2. URL constants AND key material are plaintext `.rodata` literals; earlier `strings`
+   greps failed because literals look like random base64 (`hOc36lLcbQ8J…`) and host
+   strings are plain domains — no keyword to match.
+3. Harvested exactly (base 0x100000 + program-header mapping, extents from the
+   decompiled copy-spans): apiKey, 5 keyTempest tokens, saltKey/secretKey/newSaltKey/
+   algorithmKey, 4 RequestInterceptor hosts, and 261/272 getters' literal values
+   (full URL surface — `docs/axisnet-url-map.txt`, auth chain §15 items 1-8).
+4. Layout detail: short strings use libc++ SSO — first byte = `len << 1`
+   (production `0x1c`=28? → `>>1`=14 = len("api.axis.co.id") ✓).
+
+Still encrypted (V-Key dex): header names + signature construction over the Tempest
+keys/salts. Runtime capture (bima §13 playbook) is required before attempting requests.
+`PROVIDER_AXISNET` stays `None`, now with verified endpoints+keys documented in
+`docs/bima-protocol.md` §15.
+
+Artifacts: `docs/axisnet-url-map.txt`, `scripts/ghidra-docker/{Dockerfile,DecompileByPrefix.java}`,
+`docs/bima-protocol.md` §15 update. (Ghidra image cached locally as `ghidra-headless:latest`.)
+
 ## Open
-- axisnet real API base URLs and Tempest key values (runtime only).
-- myXL (`myxl-9.6.0.apk+`) still unchecked; same V-Key family suspected — confirm
-  before any harvest attempt.
+- Header names + signature construction (V-Key-encrypted dex) — runtime capture needed.
+- myXL (`myxl-9.6.0.apk+`) still unchecked; treat as its own provider — confirm its
+  protector/stack independently, never assume axisnet's shape.

@@ -320,18 +320,61 @@ dex static-field decoder). Conclusions per evidence class:
 | package / version | `com.axis.net`, versionName 11.0.0, versionCode 836, minSdk 24, targetSdk 36 (REA `inspect_android_package`, axis-mini.apk `be8d689bfb…`) |
 | NOT the Digitral/linkit family | no `com.digitral.*` / `com.linkit.*` classes; per-provider `SERVICEKEY/CHANNEL/PINPUK/IV` scheme does not exist here — wiring it into `make_provider_cfg` is invalid |
 | app Java code is protected | `libudihrdowpk.so` banner `********** V-Key DexObfuscator version: %s **********` (VKEYObfuscation,;mbedtls AES-XTS/GCM); **zero** `Lcom/axis/net/*` class_defs in all 8 base dexes, while 781 `Lcom/axis/net/*` *type references* exist (classes3) → second-stage dex decrypted in memory at runtime |
-| constants layer | `libnative-lib.so` (sha256 `997003699c3025c435cc790470af8a883409a17cfb7b9131feaa73305fd071b9`, arm64) exports **272 JNI getters** (`Java_com_axis_net…`) incl. `RequestInterceptor_hostName{New,Production,Staging,Uat}`, `Signature_apiKey`, `Signature_keyTempest{,Capital,Guardian,Market,MarketCapital}`, per-feature `…Repository_<verb>Url`, `BalanceConvertApiImplKt_url{Get,Proceed}BalanceConvert`, `TransferBalanceRepository_otpTransferBalanceUrl`, `PackageBalanceApiImpl_getTopUpBalancePackageApi` — full list `docs/axisnet-jni-surface.txt`. url/keys are NOT plaintext in the .so (strings + 1-byte-XOR over `.rodata` empty) → AES-decrypted at runtime |
+| constants layer | `libnative-lib.so` (sha256 `997003699c3025c435cc790470af8a883409a17cfb7b9131feaa73305fd071b9`, arm64) exports **272 JNI getters** (`Java_com_axis_net…`) incl. `RequestInterceptor_hostName{New,Production,Staging,Uat}`, `Signature_apiKey`, `Signature_keyTempest{,Capital,Guardian,Market,MarketCapital}`, per-feature `…Repository_<verb>Url`, `BalanceConvertApiImplKt_url{Get,Proceed}BalanceConvert`, `TransferBalanceRepository_otpTransferBalanceUrl`, `PackageBalanceApiImpl_getTopUpBalancePackageApi` — full list `docs/axisnet-jni-surface.txt`, value map `docs/axisnet-url-map.txt`. First-pass greps missed the values (random-looking literals); Ghidra shows they are plaintext `.rodata` strings wrapped by trivial literal→`NewStringUTF` getters |
 | RN layer | `assets/index.android.bundle` (3.5 MB metro) holds `clientCode 'JGH5T9ZQ2'` + `gateway.{sit,uat,pre-,}modula.xlsmart.co.id` — that is the **Modula survey SDK only** (env table `{name:"sit|uat|preprod|prod"}`), not the balance API |
 | misc | AliPay security-guard assets (`firmware`, `profile`, `signature`, `sig_cfs`, `vkeylicensepack`, `voscodesign.vky`); `aes-everywhere` (AES-CBC-256) present — payload crypto differs from bima's AES-GCM; xendit & iapconnect config in assets; 7 encrypted `assets/tmp*` blobs (single-byte-XOR no hits) |
 | modula header scheme (SDK-local, NOT necessarily axisnet main API) | `X-Brand-Code`, `X-Source-Env`, `X-Device-Id`, `X-Msisdn`, `X-Sdk-Version`, `X-Platform`, `X-App-Version`, `X-Timestamp` (epoch s), `X-Nonce = hex(HMAC-SHA256(brandSecret, lower(brandCode)+brandSecret+deviceId+ts))`, `Authorization: Bearer <token>`; responses `base64 → AES(aesKey)` envelope (`/api/data/sdk/init` flow) |
 
-**Why no constants can be harvested statically**: V-Key DexObfuscator keeps every app
-class and every url/key away from the shipped dexes and ciphertext in the native .so.
-The only honest routes are (a) runtime extraction on an emulator (Frida/unpacker of the
-V-Key-decrypted in-memory dex, same playbook as bima §13 MuMu capture), or (b) full
-native decompile of `libnative-lib.so` (Ghidra/Hopper) to recover its decryption logic
-and key constants. Until one of those is done, `PROVIDER_AXISNET` in
-`scripts/bima_balance.py` stays `None` and no axisnet chain may be attempted.
+**Why the first-pass hex/strings recon failed but Ghidra succeeded**: V-Key DexObfuscator
+keeps every app class away from the shipped dexes; the first-pass concluded the values
+were runtime-only. Actual truth (Ghidra 12.2 headless, Docker, 2026-11-03): the URL
+constants and key material are **plaintext in `libnative-lib.so` `.rodata`** — the
+strings look like random noise (`hOc36lLcbQ8J…`), so keyword greps missed them; every
+JNI getter is a trivial literal→`NewStringUTF` wrapper. Ghidra named each literal and
+the decompiled copy-spans gave the exact extents (verify with
+`docs/axisnet-verify.py`-style re-derivation: image base 0x100000):
+
+| function (JNI)                                  | literal (exact) |
+|-------------------------------------------------|-----------------|
+| `Signature_apiKey`                              | `ipRsTxOLbgogxEiXj1P73JVWgQk9CEXMSuIsaFO8t6I=` |
+| `Signature_keyTempest`                          | `hOc36lLcbQ8JLLGvhekVMVGy0w9hTM9EazVL1Z2aF9BiUG5Ov88rQg==` |
+| `Signature_keyTempestCapital`                   | `d9kKoBWgOltACb1_e7kjkYxD6HaX1eVQ9Ap0xh3xcetx__gFYyStSRw2x5t54y9VBl7xZ5dIDZqcEtYpxTzLHyuQaBvNrPkl` |
+| `Signature_keyTempestMarket`                    | `VEOXH8EAnFARSFDtbNnvxA==` |
+| `Signature_keyTempestMarketCapital`             | `bA7mQfB73531XTWqAt4ItWgEARlLPqrLNOiuznUg0QZ3kO4I8beMwgQT066-ulysRzQTvflCIPsr52R9E4iNbq3IXUNwP9wp` |
+| `Signature_keyTempestGuardian`                  | `C6EwP6Rw4OeYajoNm7imW9LUWlQll0A=` |
+| `AxisnetHelpers_getSaltKey` / `getMsisdnSaltKey` / `OtpApiService_saltKey` / `NativeLibImpl_getSaltKey` | `ae432353a4eb4eb9` |
+| `AxisnetHelpers_getSecretKey`                   | `2eb9362dd64b1e56` |
+| `AxisnetHelpers_getNewSaltKey`                  | `saltkey` |
+| `NativeLibImpl_getAlgorithmKey`                 | `5LuLv64KzyK656HwtHJ35GxG54S4tACA4` |
+| `AxisnetHelpers_getNewAccessToken`              | `accesstoken` (pref key name) |
+| `AxisnetHelpers_getAutorepurchaseKey`           | `eyJzZXJ2aWNlX2lkIjogIjMyMTMxNzcifQ==` = `{"service_id": "3213177"}` |
+| `RequestInterceptor_hostNameProduction`         | `api.axis.co.id` |
+| `RequestInterceptor_hostNameStaging`            | `staging-api.axis.co.id` |
+| `RequestInterceptor_hostNameUat`                | `uat-api.axis.co.id` |
+| `RequestInterceptor_hostNameNew`                | `new-api.axis.co.id` |
+
+Full endpoint surface: `docs/axisnet-url-map.txt` — 261/272 JNI getters map to
+embedded literals; the auth-critical chain is
+
+1. OTP request   → `https://otp.api.axis.co.id/v1/otp`            (`AuthApiService_otpUrl`, `OtpApiService_uOtp`)
+2. OTP login     → `https://otp.api.axis.co.id/otplogin/v2`       (`AuthApiService_otpLoginUrl`)
+3. logout/fcm    → `https://otp.api.axis.co.id/{logout,fcm}`
+4. auto-login tok→ `https://ns.api.axis.co.id/v1/al/create-token` (`AuthApiService_createTokenAutoLoginUrl`)
+5. balance       → `https://balance.api.axis.co.id/getbalance`    (`HomeApiImpl_getBalanceUrl`, `PaymentApiService_balanceUrl`)
+6. package balance→`https://pkgbalance.api.axis.co.id/packages`   (`PackageBalanceApiImpl_getTopUpBalancePackageApi`)
+7. registration  → `https://user.api.axis.co.id/registration`     (preflight `…/prefix`)
+8. profile       → `https://profile.api.axis.co.id/getuser`
+
+**Still unknown (stays in the V-Key-encrypted dex)**: HTTP header names and the
+signature construction that consumes the Tempest keys/salt (`Lcom/axis/net/config/Signature;`
+and `RequestInterceptor` bodies are not in any shipped dex). Deriving them requires a
+runtime capture of the decrypted dex (bima §13 playbook) — required before any real
+request is attempted; guessing header shapes risks OTP sends to live numbers, which
+stays forbidden without explicit user consent.
+
+Toolchain reproduced in-repo: `scripts/ghidra-docker/` (Dockerfile pins Ghidra
+latest at build time — 12.2 PUBLIC used here, requires temurin **25-jdk-noble**;
+JDK 21/24 are rejected by `launch.sh`) + `DecompileByPrefix.java` headless post-script.
 
 Tools committed for follow-ups: `scripts/dex_static_fields.py` (validated against
 bima+ BuildConfig: reproduces `SERVICEKEY`, `CHANNEL=BIMA`, `VERSION_CODE` exactly,
