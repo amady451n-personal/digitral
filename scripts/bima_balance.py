@@ -112,8 +112,10 @@ PROVIDER_MYIM3 = make_provider_cfg(
     base_default="https://myim3api1.ioh.co.id/api/v2",
 )
 # slots reserved for the other Digitral-family apps present in this repo:
-PROVIDER_MYXL = None    # needs decompile-verified constants (myxl-9.6.0.apk+)
-PROVIDER_AXISNET = None # needs decompile-verified constants (axisnet-11.0.0.apk+)
+PROVIDER_MYXL = None    # needs decompile-verified constants (myxl-9.6.0.apk+; V-Key suspected)
+PROVIDER_AXISNET = None # com.axis.net 11.0.0 (vc 836): V-Key DexObfuscator + JNI-only
+                        # constants (see docs/bima-protocol.md §15) — needs runtime
+                        # in-memory dex extraction or native .so decompile; NOT Digitral
 
 PROVIDER_CFG = PROVIDER_BIMA  # active provider for this process; myim3_balance overrides
 

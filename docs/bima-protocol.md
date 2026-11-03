@@ -308,3 +308,31 @@ pure Python on a user-owned MSISDN. First validate try returned `10013` with our
 correct by ciphertext length (54 ct bytes exactly `{"transid":…,"otp":…}`); fresh re-send +
 retype of the newest SMS code resolved it — rule of thumb: 10013 = stale/mistyped code,
 not a protocol shape problem.
+
+## 15. axisnet (com.axis.net, 11.0.0 / vc 836) — static recon: obfuscated, NOT Digitral stack
+
+Checked 2026-11-03 from `axisnet-11.0.0.apk+` (sha256 wrapper→`base.apk`
+`c697134ad38ce77e023054c6e372bcaf7d8bf352e38d9b1fc6248fb908037bc2`, REA jadx 0.7.1 +
+dex static-field decoder). Conclusions per evidence class:
+
+| item | evidence |
+|------|----------|
+| package / version | `com.axis.net`, versionName 11.0.0, versionCode 836, minSdk 24, targetSdk 36 (REA `inspect_android_package`, axis-mini.apk `be8d689bfb…`) |
+| NOT the Digitral/linkit family | no `com.digitral.*` / `com.linkit.*` classes; per-provider `SERVICEKEY/CHANNEL/PINPUK/IV` scheme does not exist here — wiring it into `make_provider_cfg` is invalid |
+| app Java code is protected | `libudihrdowpk.so` banner `********** V-Key DexObfuscator version: %s **********` (VKEYObfuscation,;mbedtls AES-XTS/GCM); **zero** `Lcom/axis/net/*` class_defs in all 8 base dexes, while 781 `Lcom/axis/net/*` *type references* exist (classes3) → second-stage dex decrypted in memory at runtime |
+| constants layer | `libnative-lib.so` (sha256 `997003699c3025c435cc790470af8a883409a17cfb7b9131feaa73305fd071b9`, arm64) exports **272 JNI getters** (`Java_com_axis_net…`) incl. `RequestInterceptor_hostName{New,Production,Staging,Uat}`, `Signature_apiKey`, `Signature_keyTempest{,Capital,Guardian,Market,MarketCapital}`, per-feature `…Repository_<verb>Url`, `BalanceConvertApiImplKt_url{Get,Proceed}BalanceConvert`, `TransferBalanceRepository_otpTransferBalanceUrl`, `PackageBalanceApiImpl_getTopUpBalancePackageApi` — full list `docs/axisnet-jni-surface.txt`. url/keys are NOT plaintext in the .so (strings + 1-byte-XOR over `.rodata` empty) → AES-decrypted at runtime |
+| RN layer | `assets/index.android.bundle` (3.5 MB metro) holds `clientCode 'JGH5T9ZQ2'` + `gateway.{sit,uat,pre-,}modula.xlsmart.co.id` — that is the **Modula survey SDK only** (env table `{name:"sit|uat|preprod|prod"}`), not the balance API |
+| misc | AliPay security-guard assets (`firmware`, `profile`, `signature`, `sig_cfs`, `vkeylicensepack`, `voscodesign.vky`); `aes-everywhere` (AES-CBC-256) present — payload crypto differs from bima's AES-GCM; xendit & iapconnect config in assets; 7 encrypted `assets/tmp*` blobs (single-byte-XOR no hits) |
+| modula header scheme (SDK-local, NOT necessarily axisnet main API) | `X-Brand-Code`, `X-Source-Env`, `X-Device-Id`, `X-Msisdn`, `X-Sdk-Version`, `X-Platform`, `X-App-Version`, `X-Timestamp` (epoch s), `X-Nonce = hex(HMAC-SHA256(brandSecret, lower(brandCode)+brandSecret+deviceId+ts))`, `Authorization: Bearer <token>`; responses `base64 → AES(aesKey)` envelope (`/api/data/sdk/init` flow) |
+
+**Why no constants can be harvested statically**: V-Key DexObfuscator keeps every app
+class and every url/key away from the shipped dexes and ciphertext in the native .so.
+The only honest routes are (a) runtime extraction on an emulator (Frida/unpacker of the
+V-Key-decrypted in-memory dex, same playbook as bima §13 MuMu capture), or (b) full
+native decompile of `libnative-lib.so` (Ghidra/Hopper) to recover its decryption logic
+and key constants. Until one of those is done, `PROVIDER_AXISNET` in
+`scripts/bima_balance.py` stays `None` and no axisnet chain may be attempted.
+
+Tools committed for follow-ups: `scripts/dex_static_fields.py` (validated against
+bima+ BuildConfig: reproduces `SERVICEKEY`, `CHANNEL=BIMA`, `VERSION_CODE` exactly,
+before use).
