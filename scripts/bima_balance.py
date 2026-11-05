@@ -53,6 +53,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import uuid
 from pathlib import Path
 
 BRAND           = "bima+"     # display-only; myim3_balance.py patches this
@@ -113,11 +114,23 @@ PROVIDER_MYIM3 = make_provider_cfg(
 )
 # slots reserved for the other Digitral-family apps present in this repo:
 PROVIDER_MYXL = None    # myxl-9.6.0.apk+: own provider, stack unchecked — do NOT assume axisnet's
-PROVIDER_AXISNET = None # com.axis.net 11.0.0 (vc 836): endpoints + key material harvested
-                        # (docs/bima-protocol.md §15, docs/axisnet-url-map.txt) via Ghidra
-                        # (scripts/ghidra-docker). Header names + signature scheme still inside
-                        # the V-Key-encrypted dex — runtime capture required before first request.
-                        # NOT the Digitral family; do not wire into make_provider_cfg.
+# com.axis.net 11.0.0 (vc 836) — NOT the Digitral family, so it does NOT use
+# make_provider_cfg. Header names + signature scheme recovered from the V-Key
+# runtime dex (docs/bima-protocol.md §16).
+PROVIDER_AXISNET = {
+    "id": "axisnet",
+    "app_version": "11.0.0",
+    "app_os": "android",            # Consta.CHANNEL_ANDROID (lowercase!) -> payload deviceType + Signature.v()
+    "balance_url": "https://balance.api.axis.co.id/getbalance",
+    "otp_url": "https://otp.api.axis.co.id/v1/otp",
+    "otp_login_url": "https://otp.api.axis.co.id/otplogin/v2",
+    "api_key": "ipRsTxOLbgogxEiXj1P73JVWgQk9CEXMSuIsaFO8t6I=",
+    # HmacSHA256 key of Signature.u() / g() (plaintext, i.e. after
+    # CryptoTool.decryptString(keyTempest*, saltKey)); captured at runtime.
+    "hmac_login": "7L20wW59wJkXG1z2vR8Q6pmnssgRptOHdC3xO9CrtOFE2u6mF7Xk9Is11S44aPTPu5",
+    "hmac_market": "a0A38QY0HwkMGLwLq5zrmpC17cGBj01I2pZ91v42K26X57SThVsdfBuSut7RXkJ9eR",
+    "sso_key": "ae432353a4eb4eb9",  # AxisnetHelpers.getMsisdnSaltKey / KeyClass.sharedKey
+}
 
 PROVIDER_CFG = PROVIDER_BIMA  # active provider for this process; myim3_balance overrides
 
@@ -157,6 +170,126 @@ def _cryptography():
         except ImportError:
             pass
     sys.exit("Missing dependency: pip install cryptography")
+
+
+# --- axisnet (com.axis.net) protocol helpers (docs/bima-protocol.md §16) ------
+def _axisnet_pad(value: str, block: int) -> str:
+    """CryptoTool.doPadWithString: append NUL up to the next block multiple."""
+    pad = block - len(value) % block
+    return value + "\0" * pad if 0 < pad < block else value
+
+
+def axisnet_encrypt_sso(value: str, key: str | None = None) -> str:
+    """CryptoTool.encryptString: DESede/ECB/NoPadding + urlsafe Base64 (NO_WRAP)."""
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    triple_des = getattr(algorithms, "TripleDES", None)
+    if triple_des is None:                        # cryptography >= 43
+        from cryptography.hazmat.decrepit.ciphers.algorithms import TripleDES as triple_des
+    key = _axisnet_pad(key or PROVIDER_AXISNET["sso_key"], 24).encode()
+    enc = Cipher(triple_des(key), modes.ECB()).encryptor()
+    ct = enc.update(_axisnet_pad(value, 8).encode()) + enc.finalize()
+    return base64.b64encode(ct).decode().replace("+", "-").replace("/", "_")
+
+
+def axisnet_handshake() -> str:
+    """Signature.i(): encryptSSO(ms epoch) with newlines stripped (-> X-Handshake)."""
+    return axisnet_encrypt_sso(str(int(time.time() * 1000))).replace("\n", "")
+
+
+def _axisnet_hmac(msg: str, key: str) -> str:
+    """Signature.f(): hex(HmacSHA256(key, msg))."""
+    import hmac
+    return hmac.new(key.encode(), msg.encode(), hashlib.sha256).hexdigest()
+
+
+def axisnet_login_sign(path: str, msisdn: str = "", otp: str = "", fcm: str = "",
+                       firebase_id: str = "", model: str = "", brand: str = "",
+                       os_ver: str = "", device_type: str | None = None) -> str:
+    """Signature.v()/j(): unauthenticated endpoints (/v1/otp, /otplogin/v2, /prefix)."""
+    msg = ";".join(["POST", path, msisdn, otp, fcm, firebase_id, model, brand, os_ver,
+                    PROVIDER_AXISNET["app_os"] if device_type is None else device_type,
+                    PROVIDER_AXISNET["api_key"]])
+    return _axisnet_hmac(msg, PROVIDER_AXISNET["hmac_login"])
+
+
+def _axisnet_msisdn_id_format(msisdn: str) -> str:
+    """Utils.msisdnIDFormat: strip '-', ' '; 62.../+62... -> leading 0."""
+    s = msisdn.replace("-", "").replace(" ", "")
+    if s.startswith("62"):
+        return "0" + s[2:]
+    if s.startswith("+62"):
+        return "0" + s[3:]
+    return s
+
+
+def axisnet_fb_id(msisdn: str) -> str:
+    """CryptoTool.encrypMsisdnMD5: md5('xl' + md5(0-form msisdn) + 'axis')."""
+    inner = hashlib.md5(_axisnet_msisdn_id_format(msisdn).encode()).hexdigest()
+    return hashlib.md5(("xl" + inner + "axis").encode()).hexdigest()
+
+
+def axisnet_decrypt_data(data: str) -> str:
+    """CryptoTool.decryptString(data, saltKey): DESede/ECB, key = saltKey NUL-padded
+    to 24 bytes, urlsafe-Base64 in, NUL-trailing plaintext out. Used for the
+    `data` field of every otp.api/balance.api JSON response."""
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    triple_des = getattr(algorithms, "TripleDES", None)
+    if triple_des is None:
+        from cryptography.hazmat.decrepit.ciphers.algorithms import TripleDES as triple_des
+    raw = base64.b64decode(data.replace("-", "+").replace("_", "/") + "=" * (-len(data) % 4))
+    key = _axisnet_pad(PROVIDER_AXISNET["sso_key"], 24).encode()
+    dec = Cipher(triple_des(key), modes.ECB()).decryptor()
+    return (dec.update(raw) + dec.finalize()).rstrip(b"\0").decode("utf-8", "replace")
+
+
+_AXISNET_DEVICE_DEFAULT = {
+    "brand": "samsung",       # Build.MANUFACTURER  -> rc.c `brand`
+    "model": "SM-A235F",      # Build.MODEL         -> rc.c `model`
+    "device_os": "31",        # String SDK_INT      -> rc.c `device_os`
+    "imei": "b3a9c7d5e1f20364",  # android_id (SDK>=29) -> rc.c `imei`
+}
+
+
+def axisnet_otplogin_request(msisdn: str, otp_code: str, device: dict | None = None):
+    """Build POST /otplogin/v2 exactly as x.validateOtpCode/getOtpLoginPayload.
+    Returns (url, headers, body). `device` overrides _AXISNET_DEVICE_DEFAULT."""
+    dev = {**_AXISNET_DEVICE_DEFAULT, **(device or {})}
+    ms = axisnet_encrypt_sso(msisdn).replace("\n", "")
+    ot = axisnet_encrypt_sso(otp_code).replace("\n", "")
+    fb = axisnet_fb_id(msisdn)
+    body = json.dumps({
+        "msisdn": ms, "otp_code": ot, "fcm_token": "", "fb_id": fb,
+        "model": dev["model"], "brand": dev["brand"],
+        "device_os": dev["device_os"], "device_type": PROVIDER_AXISNET["app_os"],
+        "imei": dev["imei"],
+    }, separators=(",", ":"), ensure_ascii=False)
+    headers = {
+        "Content-Type": "application/json",
+        "Connection": "keep-alive",
+        "X-API-KEY": PROVIDER_AXISNET["api_key"],
+        "x-app-version": PROVIDER_AXISNET["app_version"],
+        "x-signature": axisnet_login_sign(
+            "/otplogin/v2", msisdn=ms, otp=ot, fcm="", firebase_id=fb,
+            model=dev["model"], brand=dev["brand"], os_ver=dev["device_os"],
+            device_type=PROVIDER_AXISNET["app_os"]),
+        "x-app-request-id": str(uuid.uuid4()),
+    }
+    return PROVIDER_AXISNET["otp_login_url"], headers, body
+
+
+def axisnet_sign(method: str, path: str, body: str, token: str, handshake: str) -> str:
+    """Signature.h(): authenticated endpoints marked @HMACHeader -> X-Signature."""
+    return _axisnet_hmac(";".join([method, path, body, token, handshake]),
+                         PROVIDER_AXISNET["hmac_market"])
+
+
+def axisnet_balance(http, token: str, version: str | None = None) -> tuple[int, str]:
+    """GET /getbalance: no @HMACHeader, so only Authorization + x-app-version (+request id)."""
+    return http.get(PROVIDER_AXISNET["balance_url"], {
+        "Authorization": token,
+        "x-app-version": version or PROVIDER_AXISNET["app_version"],
+        "x-app-request-id": str(uuid.uuid4()),
+    })
 
 
 def aes_gcm_encrypt(key: bytes, iv: bytes, plaintext: str) -> str:
@@ -290,10 +423,37 @@ class Http:
         self.timeout = timeout
         self.last_req = None   # kept for --verbose printing (headers + body, token redacted)
 
+    def _abs(self, path: str) -> str:
+        """Absolute URLs pass through; relative ones are joined onto base."""
+        return path if path.startswith("http") else self.base + path
+
+    def get(self, url: str, headers: dict):
+        url = self._abs(url)
+        req_headers = {"Accept-Encoding": "gzip", "User-Agent": self.ua}
+        req_headers.update(headers)
+        self.last_req = {"path": url, "headers": dict(req_headers), "body": ""}
+        try:
+            from curl_cffi import requests as creq
+        except ImportError:
+            creq = None
+        if creq is not None:
+            r = creq.get(url, headers=req_headers, impersonate="chrome124", timeout=self.timeout)
+            return r.status_code, r.text
+        req = urllib.request.Request(url, headers=req_headers, method="GET")
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                raw = resp.read()
+                if resp.headers.get("Content-Encoding") == "gzip":
+                    raw = gzip.decompress(raw)
+                return resp.status, raw.decode("utf-8", "replace")
+        except urllib.error.HTTPError as e:
+            return e.code, e.read().decode("utf-8", "replace")
+
     def post(self, path: str, body: str, headers: dict):
         req_headers = {"Accept-Encoding": "gzip", "User-Agent": self.ua}
         req_headers.update(headers)
-        self.last_req = {"path": path, "headers": dict(req_headers), "body": body}
+        url = self._abs(path)
+        self.last_req = {"path": url, "headers": dict(req_headers), "body": body}
         data = body.encode("utf-8")
         # The /api/v2 ingress fingerprints the TLS stack: python stdlib TLS is
         # rejected app-level with code 10001 "Authentication failed" REGARDLESS of
@@ -306,11 +466,11 @@ class Http:
                   "with 10001. pip install curl_cffi", file=sys.stderr)
             creq = None
         if creq is not None:
-            r = creq.post(self.base + path, data=data, headers=req_headers,
+            r = creq.post(url, data=data, headers=req_headers,
                           impersonate="chrome124", timeout=self.timeout)
             text = r.text
             return r.status_code, text
-        req = urllib.request.Request(self.base + path, data=data, headers=req_headers, method="POST")
+        req = urllib.request.Request(url, data=data, headers=req_headers, method="POST")
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 raw = resp.read()
@@ -772,6 +932,27 @@ def selftest(args) -> None:
     assert normalize_msisdn("+6289561234567") == "6289561234567"
     assert normalize_msisdn("089561234567") == "6289561234567"
     assert normalize_msisdn("89561234567") == "6289561234567"
+    # URL join: absolute passes through, relative joins onto base (regression: a full
+    # URL posted as `path` used to be doubled into base+path -> 404).
+    _h = Http("https://otp.api.axis.co.id", "ua")
+    assert _h._abs("https://otp.api.axis.co.id/v1/otp") == "https://otp.api.axis.co.id/v1/otp"
+    assert _h._abs("/v1/otp") == "https://otp.api.axis.co.id/v1/otp"
+    # axisnet (com.axis.net) §16: vectors captured from the live app (Frida)
+    assert axisnet_encrypt_sso("081234567890") == "X6diZ_QuncTuKBc5e5BJQA=="
+    assert axisnet_encrypt_sso("1700000000") == "KdOSI_lRdvIgo6qoFV-OSQ=="
+    assert axisnet_login_sign("/v1/otp", "081234567890", device_type="Android") == \
+        "6e63d46524144be4ba6b749263c909f2a4d9134beb0fd800aee6ca3c86543f4d"
+    # live-app parity: encryptSSO() returns a trailing "\n" that OtpPayload strips;
+    # f14dae59... is the app's own v() with the newline still attached (proves the
+    # formula), c9501cdf... is the omitted-newline, lowercase-"android" request sig.
+    assert axisnet_login_sign("/v1/otp", "X6diZ_QuncTuKBc5e5BJQA==\n",
+                              device_type="Android") == \
+        "f14dae59e401449939bc74bc75959165026337f108768b6a3a16cc3e5bef949c"
+    assert axisnet_login_sign("/v1/otp", "X6diZ_QuncTuKBc5e5BJQA==",
+                              device_type="android") == \
+        "c9501cdf663e1269c1b2845e61be0b4d3ff64f73915074a7a852a03baf1d9078"
+    assert axisnet_sign("GET", "/balance", "", "tok", "hs") == \
+        "93bcd689a4f9c0b0e6cc7ff9bf6a92b7737fc8649fbb51cc32e6c6fc95808ec8"
     # signature shape: hash only letters of hex + separators
     h = sha512_hex("parent" + SECRET + APP_OS + SECRET + APP_VERSION + SECRET + "tok" + "&SALT=" + get_values("1700000000000"))
     assert re.fullmatch(r"[0-9a-f]{128}", h)

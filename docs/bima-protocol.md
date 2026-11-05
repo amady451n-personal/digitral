@@ -365,12 +365,9 @@ embedded literals; the auth-critical chain is
 7. registration  → `https://user.api.axis.co.id/registration`     (preflight `…/prefix`)
 8. profile       → `https://profile.api.axis.co.id/getuser`
 
-**Still unknown (stays in the V-Key-encrypted dex)**: HTTP header names and the
-signature construction that consumes the Tempest keys/salt (`Lcom/axis/net/config/Signature;`
-and `RequestInterceptor` bodies are not in any shipped dex). Deriving them requires a
-runtime capture of the decrypted dex (bima §13 playbook) — required before any real
-request is attempted; guessing header shapes risks OTP sends to live numbers, which
-stays forbidden without explicit user consent.
+**CLOSED 2026-11-04** (see §16): header names and the signature construction were
+recovered by runtime reflection + an in-memory dex dump of the V-Key-decrypted app
+dex (procedure: `docs/decisions/2026-11-03-axis-recon.md` §2026-11-03c).
 
 Toolchain reproduced in-repo: `scripts/ghidra-docker/` (Dockerfile pins Ghidra
 latest at build time — 12.2 PUBLIC used here, requires temurin **25-jdk-noble**;
@@ -379,3 +376,141 @@ JDK 21/24 are rejected by `launch.sh`) + `DecompileByPrefix.java` headless post-
 Tools committed for follow-ups: `scripts/dex_static_fields.py` (validated against
 bima+ BuildConfig: reproduces `SERVICEKEY`, `CHANNEL=BIMA`, `VERSION_CODE` exactly,
 before use).
+
+## 16. axisnet signed-request scheme (runtime dex, 2026-11-04)
+
+Header names + signature construction were extracted from the **V-Key-decrypted
+in-memory dex** (dumped from `[anon:dalvik-DEX` via Frida; §2026-11-03c in
+`docs/decisions/`), then replayed against the live classes to confirm every
+constant. Nothing here was guessed and no OTP was sent.
+
+**Two interceptors only** (`AxisnetApiServices` is the single Retrofit interface):
+
+| interceptor | adds | fires |
+|---|---|---|
+| `com.axis.net.config.RequestInterceptor` | `x-app-request-id` = `UUID.randomUUID()` | every request |
+| `com.axis.net.helper.HMACSignatureInterceptor` | `X-Signature`, `X-Handshake` | only methods annotated `@com.axis.net.helper.HMACHeader` |
+
+`RequestInterceptor.a(k)` = `builder.headers(old).addHeader("x-app-request-id", uuid).addHeader(j(), c())`
+and `b(url)` rewrites the host for staging/uat/new (`n()`/`t()` etc. are the R8
+names of okhttp `url()`/`toString()`).
+
+### 16.1 Signature primitives (`com.axis.net.config.Signature`)
+
+- `f(value, key)` = **hex(HmacSHA256(key, value))** ← all hashing.
+- `c(bytes)` = lowercase hex.
+- `v()/j()` (unauthenticated: `/v1/otp`, `/otplogin/v2`, `/prefix`):
+  `msg = "POST;" + path + ";" + msisdn + ";" + otp + ";" + fcmToken + ";" +
+  firebaseId + ";" + model + ";" + brand + ";" + deviceOs + ";" + deviceType +
+  ";" + apiKey()`, key = `u()` = `decrypt(keyTempestCapital)` (prod).
+- `h(method, path, json, token, handshake)` (authenticated, `@HMACHeader`):
+  `msg = method + ";" + path + ";" + json + ";" + token + ";" + handshake`,
+  key = `g()` = `decrypt(keyTempestMarketCapital)` (prod), with
+  `token` = the request's `Authorization` header and `json` = raw body ("" for GET).
+- `i()` = `encryptSSO(str(DateHelper.getTodayTimeStamp()))` with newlines stripped
+  → **`X-Handshake`**. `getTodayTimeStamp()` is **epoch milliseconds**.
+- `x()` = staging check (`ServerEnv.STAGING.getKey()` vs host) → prod path uses the
+  `*Capital` Tempest key.
+
+### 16.2 Crypto (`CryptoTool` / `KeyClass` / `EnumCrypto`)
+
+- `ALGORITHM=DESede`, `MODE=ECB`, `PADDING=NoPadding`.
+- `encryptString(v, key)`: NUL-pad `v` to a multiple of 8, NUL-pad `key` to **24**,
+  3DES-ECB, `Base64 NO_WRAP`, then `+`→`-` `+` `/`→`_` (URL-safe, keeps `=`).
+- `encryptSSO(v)` = `encryptString(v, KeyClass.sharedKey)` and `sharedKey` =
+  `AxisnetHelpers.getMsisdnSaltKey()` = `ae432353a4eb4eb9`.
+- `encrypMsisdnMD5(x)` = `md5hex("xl" + md5hex(msisdnIDFormat(x)) + "axis")` (MD5 via
+  `getStringHash()`).
+- `decryptString(x, key)`: same 3DES, applied to the Base64 (URL-safe) input; it is
+  what turns the `keyTempest*` JNI constants into the HMAC keys.
+
+### 16.3 Per-endpoint header map (Retrofit annotation → header)
+
+| endpoint | method | headers (besides `x-app-request-id`) |
+|---|---|---|
+| `/getbalance` (balance.api) | GET | `Authorization`, `x-app-version` — **no** `@HMACHeader` |
+| `/getbalance/convert`, `/getbalance/pulse` | GET | same, `getBalanceConvert` is `@HMACHeader` |
+| `/quota` (quota.api) | GET | `Authorization`, `x-app-version` |
+| `/v1/otp` (otp.api) | POST `@Body` | `Content-Type: application/json`, `Connection: keep-alive`, `X-API-KEY`, `x-app-version`, `x-signature` |
+| `/otplogin/v2` (otp.api) | POST `@Body` | same as above (body = `rc.c`) |
+| `/prefix` (user.api) | POST `@Field("content")` | `x-handshake`, `x-signature`, `x-app-version`, `x-device` (= `"Android " + Build.VERSION.RELEASE`), `X-API-KEY` |
+
+`x-app-version` = `Utils.getVersionName()` = `11.0.0`. `X-API-KEY` is the literal
+above for `/otplogin/v2` and `OtpApiService.xApikey()`'s literal for `/v1/otp`.
+
+### 16.4 Login payloads
+
+- `/v1/otp` body (`OtpPayload`): `{ "msisdn": encryptSSO(msisdn) (newlines stripped),
+  "device_type": "android" }` — the JSON key is **`device_type`**, from
+  `OtpPayload`'s `@SerializedName("device_type")` on its `deviceType` field
+  (runtime dex `d_0x7ae7076be000`, decompiled 2026-11-05; the earlier
+  `"deviceType"` key claim was a guess and never runtime-verified). The
+  signature message carries the VALUE only, so it is unaffected:
+  signature = `v("/v1/otp", msisdn_enc, deviceType="android")`.
+  **`deviceType` is `Consta.CHANNEL_ANDROID` = `"android"`
+  (lowercase, read from the live app): `"Android"` makes the server reply
+  `401 {"error_message":"Invalid signature"}`. The app normalizes the msisdn to the
+  `62…` form BEFORE `encryptSSO` (runtime capture: plaintext handed to
+  `CryptoTool.encryptSSO` was `62…`, not `0…`); Python reproduces the app's
+  ciphertext byte-for-byte for that input, so `62…` is the form to send.**
+- `/otplogin/v2` body (`rc.c`): constructed in
+  `splashLogin/viewModel/x.validateOtpCode` → `getOtpLoginPayload(otp, imei)`:
+  `msisdn` = `encryptSSO(msisdn)`, `otp_code` = `encryptSSO(otp)`, `fb_id` =
+  `encrypMsisdnMD5(msisdnIDFormat(msisdn))`, plus `manufacture`, `deviceName`,
+  `channel` (`Consta.CHANNEL_ANDROID`), `device_os`, `fcm_token`, `imei`;
+  signature = `v("/otplogin/v2", msisdn, otp, fcm, fb_id, model, brand,
+  device_os, device_type)`. **Verified live 2026-11-05:** the body keys are
+  exactly the getter names —
+  `{"msisdn","otp_code","fcm_token","fb_id","model","brand","device_os","device_type","imei"}`
+  — with `fcm_token: ""` (app's no-FCM state) and `imei` = `android_id`; the
+  server answered `200` and issued a token. `rc.c` still does not decompile from
+  any of the nine dumps, so verification is black-box plus the recovered getter
+  semantics above (`model` ← `Build.MODEL`, `brand` ← `Build.MANUFACTURER`,
+  `device_os` ← `String.valueOf(SDK_INT)`).
+
+### 16.6 Login chain closed live (2026-11-05, own number, consented)
+
+- `/v1/otp` with the `device_type` key and `62…` msisdn → `200`, SMS sent
+  (`data` = base64 of `{"can_login":true,…}`, **plain**, not encrypted).
+- `/otplogin/v2` with the body above → `200`. Response envelope
+  `{"status":true,"data":"<b64url>"}`; after decrypt:
+  `{"id":"","name":"",…,"token":"<uuid>","message":"generate new token"}`.
+- **Response `data` decrypt** = `CryptoTool.decryptString(v, saltKey)`:
+  **DESede/ECB** (no padding option in openssl terms — the plaintext carries
+  trailing NUL bytes, strip them), key = `saltKey` (`ae432353a4eb4eb9`) NUL-padded
+  to 24 bytes, input is urlsafe Base64 (`-`→`+`, `_`→`/`). Applies to both
+  otp.api and balance.api `data` fields.
+- **`/getbalance` `Authorization` = the raw token string, NO `Bearer` prefix**
+  (open item since §16.1 – now confirmed `200`). Response `data` decrypt yields
+  `{"txid","msisdn","graceStatus","status","result":{…,"balance","pricePlan","subcriberID"}}`.
+- Cloudflare edge: `otp.api`/`balance.api` serve a managed challenge (`403`,
+  "_cf_chl"/"Just a moment") to the python TLS stack on `/otplogin/v2` and
+  `/getbalance`, while plain `curl` passes; `/v1/otp` passes both.
+  `scripts/axisnet_balance.py` therefore falls back to the `curl` CLI on that
+  specific challenge.
+
+Implemented as `PROVIDER_AXISNET` + `axisnet_*` helpers in
+`scripts/bima_balance.py` (entry point `scripts/axisnet_balance.py`, mirroring
+`myim3_balance.py`): `--send-otp`, `--otp-code` (login + vault), `--balance`,
+`--decrypt`, `--selftest` (offline: fb_id recipe, `/otplogin/v2` body shape,
+DESede decrypt roundtrip).
+
+### 16.5 Verification vectors (live Frida, exact)
+
+```
+encryptSSO("081234567890")                      = X6diZ_QuncTuKBc5e5BJQA==
+encryptSSO("1700000000")                        = KdOSI_lRdvIgo6qoFV-OSQ==
+v("/v1/otp","081234567890",…,"Android")         = 6e63d46524144be4ba6b749263c909f2a4d9134beb0fd800aee6ca3c86543f4d
+v("/v1/otp","X6diZ_QuncTuKBc5e5BJQA==\n",…,"Android") = f14dae59e401449939bc74bc75959165026337f108768b6a3a16cc3e5bef949c
+v("/v1/otp","X6diZ_QuncTuKBc5e5BJQA==",…,"android")   = c9501cdf663e1269c1b2845e61be0b4d3ff64f73915074a7a852a03baf1d9078  (== real request)
+h("GET","/balance","","tok","hs")               = 93bcd689a4f9c0b0e6cc7ff9bf6a92b7737fc8649fbb51cc32e6c6fc95808ec8
+u() (hmac_login key)                            = 7L20wW59wJkXG1z2vR8Q6pmnssgRptOHdC3xO9CrtOFE2u6mF7Xk9Is11S44aPTPu5
+g() (hmac_market key)                           = a0A38QY0HwkMGLwLq5zrmpC17cGBj01I2pZ91v42K26X57SThVsdfBuSut7RXkJ9eR
+```
+
+Implemented as `PROVIDER_AXISNET` + `axisnet_*` helpers in
+`scripts/bima_balance.py` (entry point `scripts/axisnet_balance.py`, mirroring
+`myim3_balance.py`); `python3 scripts/bima_balance.py --selftest` asserts the
+`/v1/otp` vectors offline. The full live chain (OTP → login token → balance) is
+documented in §16.6 above.
+
