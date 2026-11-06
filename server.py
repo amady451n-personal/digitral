@@ -43,8 +43,17 @@ REGISTRY_FILE = HOME / "registry.json"
 VAULTS_DIR = HOME   # vaults live at HOME/{provider}; matches CLI BIMA_HOME=/app/data/{provider}
 FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 
-# providers that are actually wired (constants verified). myXL/axisnet slots exist
-# in bima_balance (PROVIDER_MYXL/AXISNET) but are None until decompile-verified.
+# Visual identity per provider lives here (not in the frontend) so any frontend
+# can stay provider-blind: render `label`, `<img src=logo>`, use `color` as accent.
+# `cfg` is the Digitral profile; axisnet/myXL are not wired yet -> available:false.
+PROVIDER_LOOK = {
+    "bima":    {"color": "#e01b2e", "logo": "/assets/bima.png"},
+    "myim3":   {"color": "#ffd200", "logo": "/assets/myim3.png"},
+    "axisnet": {"color": "#7a1fa2", "logo": "/assets/axisnet.png"},
+    "myxl":    {"color": "#0057a8", "logo": "/assets/myxl.png"},
+}
+DEFAULT_LOOK = {"color": "#38bdf8", "logo": None}
+
 PROVIDERS = {
     "bima": {
         "label": "bima+ (Tri)",
@@ -56,7 +65,16 @@ PROVIDERS = {
         "cfg": bm.PROVIDER_MYIM3,
         "vault_dir": VAULTS_DIR / "myim3",
     },
+    # slots exist in bima_balance (PROVIDER_MYXL/AXISNET) but the clients are not
+    # wired into this API yet; cfg stays None so POST /numbers refuses them.
+    "axisnet": {"label": "AXISNET", "cfg": None, "vault_dir": VAULTS_DIR / "axisnet"},
+    "myxl":    {"label": "myXL",    "cfg": None, "vault_dir": VAULTS_DIR / "myxl"},
 }
+
+
+def _look(provider: str) -> Dict[str, Any]:
+    """Per-provider presentation (color/logo); identical shape for every provider."""
+    return PROVIDER_LOOK.get(provider, DEFAULT_LOOK)
 
 try:
     from fastapi import FastAPI, HTTPException
@@ -182,7 +200,7 @@ def health():
 
 @app.get("/providers")
 def providers():
-    return [{"id": k, "label": v["label"], "available": v["cfg"] is not None}
+    return [{"id": k, "label": v["label"], "available": v["cfg"] is not None, **_look(k)}
             for k, v in PROVIDERS.items()]
 
 
@@ -204,6 +222,7 @@ def resend(num_id: str):
     _pending[num_id]["transid"] = transid
     _pending[num_id]["created_at"] = time.time()
     return {"id": num_id, "msisdn": p["msisdn"], "provider": p["provider"],
+            "label": PROVIDERS[p["provider"]]["label"], **_look(p["provider"]),
             "transid": transid, "status": "otp_resent", "otp_required": True}
 
 
@@ -220,6 +239,7 @@ def list_numbers(include_pending: bool = False):
             "msisdn": n["msisdn"],
             "added_at": n.get("added_at"),
             "pending": False,
+            **_look(n["provider"]),
         })
     if include_pending:
         for pid, p in _pending.items():
@@ -230,6 +250,7 @@ def list_numbers(include_pending: bool = False):
                 "msisdn": p["msisdn"],
                 "added_at": p.get("created_at"),
                 "pending": True,
+                **_look(p["provider"]),
             })
     return {"numbers": out}
 
@@ -262,6 +283,7 @@ def add_number(body: AddNumber):
         })
         _save_registry(reg)
         return {"id": nid, "msisdn": msisdn, "provider": body.provider,
+                "label": PROVIDERS[body.provider]["label"], **_look(body.provider),
                 "status": "session_reused", "otp_required": False}
 
     client, _ = _client(body.provider, msisdn, vault)
@@ -278,6 +300,7 @@ def add_number(body: AddNumber):
         _pending[nid]["transid"] = transid
         _pending[nid]["created_at"] = time.time()
         return {"id": nid, "msisdn": msisdn, "provider": body.provider,
+                "label": PROVIDERS[body.provider]["label"], **_look(body.provider),
                 "transid": transid, "status": "otp_resent", "otp_required": True}
 
     nid = uuid.uuid4().hex[:12]
@@ -286,6 +309,7 @@ def add_number(body: AddNumber):
         "transid": transid, "created_at": time.time(),
     }
     return {"id": nid, "msisdn": msisdn, "provider": body.provider,
+            "label": PROVIDERS[body.provider]["label"], **_look(body.provider),
             "transid": transid, "status": "otp_sent", "otp_required": True}
 
 
@@ -332,6 +356,7 @@ def balance(num_id: str):
     except Exception as e:
         raise HTTPException(502, f"{type(e).__name__}: {e}")
     return {"id": num_id, "provider": info["provider"], "msisdn": info["msisdn"],
+            "label": PROVIDERS[info["provider"]]["label"], **_look(info["provider"]),
             "balance": raw}
 
 
@@ -364,7 +389,9 @@ def _snapshot() -> List[Dict[str, Any]]:
     for n in _load_registry()["numbers"]:
         item = {"id": n["id"], "provider": n["provider"],
                 "label": PROVIDERS.get(n["provider"], {}).get("label", n["provider"]),
-                "msisdn": n["msisdn"], "ok": False, "data": None, "error": None}
+                "msisdn": n["msisdn"], "added_at": n.get("added_at"),
+                "ok": False, "data": None, "error": None,
+                **_look(n["provider"])}
         try:
             vault = bm.Vault(PROVIDERS[n["provider"]]["vault_dir"])
             client, _ = _client(n["provider"], n["msisdn"], vault)

@@ -5,3 +5,5 @@ __pycache__/
 *.pyc
 # sesi IDE/agent lokal (bukan defenisi proyek)
 .claude/
+# mockup sesi brainstorming (lokal, bukan bagian produk)
+.superpowers/
