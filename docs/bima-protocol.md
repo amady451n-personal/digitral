@@ -495,6 +495,34 @@ Implemented as `PROVIDER_AXISNET` + `axisnet_*` helpers in
 `--decrypt`, `--selftest` (offline: fb_id recipe, `/otplogin/v2` body shape,
 DESede decrypt roundtrip).
 
+### 16.7 Quota dashboard (live 2026-11-06, own number)
+
+- **`GET https://nq.api.axis.co.id/v1/quota/homepage`** — headers `Authorization`
+  (raw token) + `x-app-version`; `200`. Its `data` is **plain base64(JSON), NOT
+  DESede** (unlike otp.api/balance.api). Decrypted shape (snake_case keys):
+  `{"total":4,"summary":{"is_byop","is_gift","total_remaining","is_unlimited",
+  "formatted":{"total_remaining":"66.30 GB"}},"packages":[{"name","percent",
+  "remaining_text":"SISA 41.71 GB","is_unlimited","formatted":{"expired":
+  "Berlaku sampai 10 November 2026 23:59"},"badge","warning",...}]}`.
+  Sibling nq endpoints (same auth): `/v1/quota` (per-package detail), `/v1/quota/bonus`.
+- **`GET https://profile.api.axis.co.id/v1/bff/homepage`** — `401
+  {"error_message":"Invalid signature"}` without `X-Handshake`/`X-Signature`
+  (i.e. its Retrofit method carries `@HMACHeader`; the handshake is
+  `Signature.i()` = `encryptSSO(<epoch-ms>)`). Not needed: getbalance +
+  nq quota/homepage already supply every dashboard field.
+- **`/getbalance` decrypted result fields** (Gson DTO `ResultBalance`, keys are
+  literal): `{accounttype, accountstate, accountstatus, activestopdate,
+  suspendstopdate, disablestopdate, balance, pricePlan, subcriberID}` — the three
+  stop dates are strings like `"Exp on 29 Dec 2026"`, plus `graceStatus{status,
+  information}`. Mapping used by `scripts/axisnet_balance.py`: pulsa =
+  `result.balance`, masa aktif = `result.activestopdate`, grace =
+  `graceStatus.information` else `result.disablestopdate`, kuota =
+  nq `summary.formatted.total_remaining`.
+
+`--balance` (and a bare `--token`) now prints the dashboard: msisdn / pulsa /
+kuota / masa aktif / grace s/d + one line per package; `--json` emits the parsed
+dict plus the raw envelopes (`*_raw`).
+
 ### 16.5 Verification vectors (live Frida, exact)
 
 ```

@@ -10,8 +10,12 @@ Usage:
     python3 scripts/axisnet_balance.py 081234567890 --dry-run        # show OTP request
     python3 scripts/axisnet_balance.py 081234567890 --send-otp       # REAL OTP (own SIM)
     python3 scripts/axisnet_balance.py 081234567890 --otp-code 123456 --balance
-    python3 scripts/axisnet_balance.py --token <tok> [--balance]     # GET /getbalance
+    python3 scripts/axisnet_balance.py --token <tok> [--json]           # dashboard
     python3 scripts/axisnet_balance.py --decrypt <b64url>            # offline data blob
+
+Dashboard output = msisdn / pulsa / kuota / masa aktif / grace s/d (+ paket list),
+parsed from /v1/bff/homepage (profile.api) + /v1/quota/homepage (nq.api); /getbalance
+is still fetched as fallback and shown raw in --json.
 
 OTP is only ever sent with --send-otp; the code is only ever read from --otp-code,
 both for a number you own. Login token is saved to the encrypted vault (~/.axisnet).
@@ -21,6 +25,7 @@ TLS stacks with a managed challenge (403 "Just a moment...") on /otplogin/v2 and
 /getbalance while plain curl passes; all calls therefore fall back to curl.
 """
 import argparse
+import base64
 import json
 import os
 import re
@@ -34,6 +39,12 @@ import bima_balance as bm  # noqa: E402
 
 C = bm.PROVIDER_AXISNET
 BRAND = "axisnet"
+
+# Dashboard sources (docs/axisnet-url-map.txt). Do NOT call profile.api bff/homepage:
+# it answers 401 "Invalid signature" without X-Handshake/X-Signature (verified live
+# 2026-11-06) and adds nothing - getbalance + nq quota/homepage already carry
+# msisdn/pulsa/masa aktif/grace and the per-package breakdown.
+QUOTA_HOME_URL = "https://nq.api.axis.co.id/v1/quota/homepage"
 
 
 def _msisdn(raw: str) -> str:
@@ -58,6 +69,95 @@ def otp_request(msisdn: str) -> "tuple[str, dict, str]":
         "x-app-request-id": str(__import__("uuid").uuid4()),
     }
     return C["otp_url"], headers, body
+
+
+# --- dashboard: msisdn / pulsa / kuota / masa aktif / grace -------------------
+def _hdrs(token: str) -> dict:
+    return {
+        "Authorization": token,
+        "x-app-version": C["app_version"],
+        "x-app-request-id": str(__import__("uuid").uuid4()),
+    }
+
+
+def parse_home(home: dict, bal: dict | None = None) -> dict:
+    """Flatten bff/homepage + getbalance + nq quota/homepage into bima-style fields.
+
+    Live shapes (2026-11-06):
+      nq quota/homepage (decrypted, snake_case):
+        {total, summary:{total_remaining, is_unlimited, formatted:{total_remaining}},
+         packages:[{name, percent, remaining_text, is_unlimited, formatted:{expired}}]}
+      getbalance (decrypted): {msisdn, graceStatus:{status,information}, status,
+         result:{balance, activestopdate, suspendstopdate, disablestopdate, ...}}
+      bff/homepage: {profile:{msisdn}, myBalance:{balance, formatted:{balance,expired}},
+         quota:{...}, gracePeriode:{title,description}}  <- needs X-Handshake/X-Signature
+    """
+    home = home or {}
+    r = ((bal or {}).get("result") or {})
+    gs = ((bal or {}).get("graceStatus") or {})
+    mb = home.get("myBalance") or {}
+    mbf = mb.get("formatted") or {}
+    q = ((home.get("quota") or {}).get("formatted") or {})
+    return {
+        "msisdn": (home.get("profile") or {}).get("msisdn") or (bal or {}).get("msisdn"),
+        "pulsa": mbf.get("balance") or mb.get("balance") or r.get("balance"),
+        "kuota": q.get("remainingQuota"),
+        "masa_aktif": mbf.get("expired") or r.get("activestopdate"),
+        "grace": gs.get("information") or r.get("disablestopdate"),
+        "grace_status": gs.get("status"),
+    }
+
+
+def parse_quota_home(qh: dict | None) -> dict:
+    """nq.api /v1/quota/homepage (packages use snake_case JSON keys)."""
+    qh = qh or {}
+    summ = qh.get("summary") or {}
+    fmt = summ.get("formatted") or {}
+    paket = []
+    for p in qh.get("packages") or []:
+        if not isinstance(p, dict):
+            continue
+        pct = p.get("percent")
+        paket.append({
+            "nama": p.get("name"),
+            "sisa": p.get("remaining_text") or p.get("remaining_formatted"),
+            "persen": round(pct, 1) if isinstance(pct, (int, float)) else pct,
+            "s/d": (p.get("formatted") or {}).get("expired"),
+            "unlimited": bool(p.get("is_unlimited")),
+        })
+    return {"kuota": fmt.get("total_remaining"), "unlimited": bool(summ.get("is_unlimited")),
+            "jumlah_paket": qh.get("total"), "paket": paket}
+
+
+def axisnet_dashboard(http, token: str, msisdn: "str | None" = None) -> dict:
+    """Pulsa + kuota + masa aktif + grace (getbalance + nq quota/homepage)."""
+    out = {"provider": BRAND, "msisdn": msisdn}
+    payloads = {}
+    for key, url in (("quota_home", QUOTA_HOME_URL), ("balance", C["balance_url"])):
+        status, text = _cf_get(http, url, _hdrs(token))
+        env = _plain(text) or text[:400]
+        out[key + "_raw"] = {"status": status, "data": env}
+        inner = env.get("data") if isinstance(env, dict) else None
+        payloads[key] = inner if isinstance(inner, dict) else {}
+    out.update(parse_home(payloads.get("home") or {}, payloads["balance"]))
+    out.update(parse_quota_home(payloads["quota_home"]))
+    return out
+
+
+def print_dashboard(res: dict, msisdn: str = "") -> None:
+    """bima-style human block: msisdn / pulsa / kuota / masa aktif / grace s/d."""
+    print(f"\n== {BRAND} ==")
+    print(f"msisdn     : {res.get('msisdn') or msisdn or '-'}")
+    print(f"pulsa      : {('Rp ' + str(res['pulsa'])) if res.get('pulsa') else '-'}")
+    kuota = res.get("kuota") or "-"
+    if res.get("unlimited"):
+        kuota += " (UNLIMITED)"
+    print(f"kuota      : {kuota}")
+    print(f"masa aktif : {res.get('masa_aktif') or '-'}")
+    print(f"grace s/d  : {res.get('grace') or '-'}"
+          + (f" ({res['grace_status']})" if res.get("grace_status") else ""))
+    for p in res.get("paket") or []:
+        print(f"paket      : {p['nama']} | sisa {p['sisa']} | {p['persen']}% | s/d {p['s/d']}")
 
 
 # --- transport: bm.Http (curl_cffi) first, curl CLI on a Cloudflare challenge ---
@@ -98,17 +198,31 @@ def _cf_get(http, url: str, headers: dict) -> "tuple[int, str]":
 
 
 def _plain(text: str):
-    """Parse a JSON envelope and decrypt its `data` blob when present (offline)."""
+    """Parse a JSON envelope and decode its `data` blob when present (offline).
+
+    `data` is either DESede/ECB (otp.api/balance.api) or plain base64(JSON)
+    (nq.api quota, verified live 2026-11-06).
+    """
     try:
         obj = json.loads(text)
     except ValueError:
         return None
     if isinstance(obj, dict) and obj.get("data"):
-        try:
-            inner = bm.axisnet_decrypt_data(obj["data"])
-            obj["data"] = json.loads(inner)
-        except Exception:
-            obj["data"] = "<undecryptable>"
+        blob = obj["data"]
+        for decode in (bm.axisnet_decrypt_data,
+                       lambda s: base64.b64decode(
+                           s.replace("-", "+").replace("_", "/")
+                           + "=" * (-len(s) % 4)).decode("utf-8")):
+            try:
+                obj["data"] = json.loads(decode(blob))
+                break
+            except Exception:
+                continue
+        else:
+            try:                             # already-plain JSON string
+                obj["data"] = json.loads(blob)
+            except ValueError:
+                pass                         # opaque string: keep raw
     return obj
 
 
@@ -121,7 +235,7 @@ def main() -> int:
     ap.add_argument("--send-otp", action="store_true",
                     help="KIRIM OTP nyata ke nomor tsb (butuh nomor sendiri + izin)")
     ap.add_argument("--balance", action="store_true",
-                    help="setelah --otp-code/--token sukses, lanjut GET /getbalance")
+                    help="setelah --otp-code/--token sukses, lanjut ambil dashboard (pulsa/kuota/grace)")
     ap.add_argument("--decrypt", default=None, metavar="B64URL",
                     help="dekripsi offline field data (DESede/ECB, kunci saltKey)")
     ap.add_argument("--dry-run", action="store_true", help="bangun request, tanpa jaringan")
@@ -172,6 +286,20 @@ def main() -> int:
         blob = _b64.b64encode(ct).decode().replace("+", "-").replace("/", "_")
         assert bm.axisnet_decrypt_data(blob) == sample
         bm.selftest(args)
+        # dashboard flattening: keys verified live 2026-11-06 (snake_case on nq quota)
+        qh = {"total": 1, "summary": {"is_unlimited": False, "formatted": {"total_remaining": "3.2 GB"}},
+              "packages": [{"name": "Bonus", "remaining_text": "1 GB", "percent": 50,
+                            "formatted": {"expired": "Berlaku sampai 30 Nov 2026 23:59"}}]}
+        bal = {"msisdn": "6281234567890", "graceStatus": {"status": "Active", "information": ""},
+               "result": {"balance": "10000", "activestopdate": "Exp on 29 Dec 2026",
+                          "disablestopdate": "Exp on 29 Dec 2026"}}
+        r = parse_home({"profile": {"msisdn": "6281234567890"}}, bal)
+        assert r["msisdn"] == "6281234567890" and r["pulsa"] == "10000"
+        assert r["masa_aktif"] == "Exp on 29 Dec 2026" and r["grace"] == "Exp on 29 Dec 2026"
+        q = parse_quota_home(qh)
+        assert q["kuota"] == "3.2 GB" and q["jumlah_paket"] == 1
+        assert q["paket"][0] == {"nama": "Bonus", "sisa": "1 GB", "persen": 50,
+                                 "s/d": "Berlaku sampai 30 Nov 2026 23:59", "unlimited": False}
         return 0
 
     if args.dry_run:
@@ -225,14 +353,11 @@ def main() -> int:
     if not token:
         ap.error("need --token/AXISNET_TOKEN, --otp-code, or a saved session")
 
-    status, text = _cf_get(http, C["balance_url"], {
-        "Authorization": token,
-        "x-app-version": C["app_version"],
-        "x-app-request-id": str(__import__("uuid").uuid4()),
-    })
-    out = {"provider": BRAND, "status": status, "data": _plain(text) or text[:2000]}
-    print(json.dumps(out, ensure_ascii=False) if args.json
-          else f"HTTP {status}\n{json.dumps(out['data'], indent=2, ensure_ascii=False) if isinstance(out['data'], (dict, list)) else out['data']}")
+    res = axisnet_dashboard(http, token, args.msisdn)
+    if args.json:
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+    else:
+        print_dashboard(res, _msisdn(args.msisdn) if args.msisdn else "")
     return 0
 
 
