@@ -14,7 +14,7 @@ Semua kemajuan frontend berhenti di commit `5452687` (lihat `git log`). Foto ini
 | 5 | Tombol tidak bisa double-click saat proses | helper `withBusy(btn, fn)` di semua tombol |
 | 6 | Resend/enter ulang OTP tanpa 409 | `add_number` idempoten utk (provider, msisdn) + `POST /numbers/{id}/resend` |
 | 7 | Mobile-first | grid 1 fr → ≥640 px auto-fill; modal bottom-sheet; `env(safe-area-inset-*)`; input 16 px anti-zoom iOS; tap target ≥ 40 px |
-| 8 | Logo APK sebagai watermark kartu (bukan gradasi warna) | `assets/bima.png`, `assets/myim3.png` (192×192, dari mipmap-xxxhdpi), `::before` opacity 0.18 |
+| 8 | Logo APK sebagai watermark kartu (bukan gradasi warna) | `assets/bima.png`, `assets/myim3.png` (192×192, dari mipmap-xxxhdpi), `assets/axisnet.png` (180×180, apple-touch-icon axis.co.id — APK MuMu sedang mati), `::before` opacity 0.18 |
 | 9 | Ikon PWA generik | `assets/icon.svg` (SVG gradasi biru, bukan logo provider) |
 | 10 | localStorage utk snapshot offline | `localStorage["digitral:lastSnapshot"]` disimpan setiap load/SSE, dipulihkan saat offline |
 | 11 | Mudah menerima update (service worker) | shell cache-first per nama cache `digitral-shell-v1`; activator menghapus cache lama → bump nama cache = update terpasang *(lihat B-3)* |

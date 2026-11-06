@@ -1,5 +1,5 @@
 const CACHE = "digitral-shell-v1";
-const SHELL = ["/", "/manifest.json", "/assets/icon.svg", "/assets/bima.png", "/assets/myim3.png"];
+const SHELL = ["/", "/manifest.json", "/assets/icon.svg", "/assets/bima.png", "/assets/myim3.png", "/assets/axisnet.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
