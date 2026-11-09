@@ -36,6 +36,7 @@ from typing import Any, Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
 import bima_balance as bm
 import myxl_balance as mx
+import axisnet_balance as ax
 
 HOME = Path(os.environ.get("FRONTEND_HOME", str(Path.home() / ".bima-frontend")))
 POLL_SEC = float(os.environ.get("POLL_SEC", "60"))
@@ -46,7 +47,7 @@ FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 
 # Visual identity per provider lives here (not in the frontend) so any frontend
 # can stay provider-blind: render `label`, `<img src=logo>`, use `color` as accent.
-# `cfg` is the Digitral profile; axisnet/myXL are not wired yet -> available:false.
+# `cfg` is the per-provider protocol profile (Digitral for bima/myim3, native for axisnet/myxl).
 PROVIDER_LOOK = {
     "bima":    {"color": "#e01b2e", "logo": "/assets/bima.png"},
     "myim3":   {"color": "#ffd200", "logo": "/assets/myim3.png"},
@@ -66,9 +67,7 @@ PROVIDERS = {
         "cfg": bm.PROVIDER_MYIM3,
         "vault_dir": VAULTS_DIR / "myim3",
     },
-    # slots exist in bima_balance (PROVIDER_MYXL/AXISNET) but the clients are not
-    # wired into this API yet; cfg stays None so POST /numbers refuses them.
-    "axisnet": {"label": "AXISNET", "cfg": None, "vault_dir": VAULTS_DIR / "axisnet"},
+    "axisnet": {"label": "AXISNET", "cfg": bm.PROVIDER_AXISNET, "vault_dir": VAULTS_DIR / "axisnet"},
     "myxl":    {"label": "myXL",    "cfg": mx.PROVIDER_MYXL, "vault_dir": VAULTS_DIR / "myxl"},
 }
 
@@ -163,6 +162,8 @@ def _client(provider: str, msisdn: str, vault: Optional[bm.Vault] = None,
         vault = bm.Vault(p["vault_dir"])
     if provider == "myxl":
         return mx.MyXLClient(vault, msisdn, action=action, cfg=p["cfg"]), vault
+    if provider == "axisnet":
+        return ax.AxisnetClient(vault, msisdn, action=action, cfg=p["cfg"]), vault
     http = bm.Http(p["cfg"]["base_default"], bm.DEFAULT_UA, 45.0)
     return bm.BimaClient(http, vault, msisdn, action=action, cfg=p["cfg"]), vault
 

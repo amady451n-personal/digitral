@@ -361,5 +361,70 @@ def main() -> int:
     return 0
 
 
+# --- client adapter for server.py (duck-types bima_balance.BimaClient) --------
+_AX_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+          "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+
+
+class AxisnetClient:
+    """server.py-compatible client for the axisnet (com.axis.net) family.
+
+    Same surface as BimaClient/MyXLClient: request_guest_token/send_otp/
+    validate_otp/get_balance, plus token/msisdn/vault/fresh attributes.
+    """
+
+    def __init__(self, vault, msisdn: str, action: str = "login", cfg=None):
+        self.vault = vault
+        self.msisdn = bm.normalize_msisdn(msisdn)
+        self.token = None
+        self.fresh = False
+        self.cfg = cfg or C
+        self.http = bm.Http(C["otp_url"], _AX_UA, 45.0)
+
+    def request_guest_token(self) -> str:
+        return ""   # axisnet has no guest token
+
+    def send_otp(self) -> str:
+        url, headers, body = otp_request(_msisdn(self.msisdn))
+        status, text = _cf_post(self.http, url, body, headers)
+        if status not in (200, 201):
+            raise RuntimeError(f"axisnet /v1/otp {status}: {text[:200]}")
+        return ""   # /otplogin/v2 is stateless (msisdn + otp_code)
+
+    def validate_otp(self, transid: str, otp: str) -> str:
+        url, headers, body = bm.axisnet_otplogin_request(_msisdn(self.msisdn), otp.strip())
+        status, text = _cf_post(self.http, url, body, headers)
+        obj = _plain(text)
+        blob = (obj or {}).get("data")
+        token = blob.get("token") if isinstance(blob, dict) else None
+        if status != 200 or not token:
+            raise RuntimeError(f"axisnet /otplogin/v2 {status}: {text[:200]}")
+        import time
+        self.token = token
+        self.vault.put_session(self.msisdn, {
+            "provider": BRAND, "token": token,
+            "issued": time.strftime("%Y-%m-%dT%H:%M:%S+07"),
+        })
+        return token
+
+    def get_balance(self) -> dict:
+        if not self.token:
+            self.token = (self.vault.session(self.msisdn) or {}).get("token")
+        if not self.token:
+            raise RuntimeError("no token")
+        dash = axisnet_dashboard(self.http, self.token, self.msisdn)
+        # normalize to the same simple shape as bima/myIM3/myXL
+        return {
+            "balance": dash.get("pulsa"),
+            "quota": dash.get("kuota"),
+            "unit": "",
+            "used": None,
+            "unlimited": bool(dash.get("unlimited")),
+            "active_until": dash.get("masa_aktif"),
+            "grace_until": dash.get("grace"),
+            "bonstri": None,
+        }
+
+
 if __name__ == "__main__":
     sys.exit(main() or 0)

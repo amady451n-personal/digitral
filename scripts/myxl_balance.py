@@ -181,6 +181,18 @@ class MyXLClient:
             "ax-fingerprint": _fingerprint(self.msisdn),
         }
 
+    def _store(self, tok: dict, bearer: str, refresh_token: str) -> None:
+        """Persist the session. `exp` tracks the long-lived refresh_token (session
+        validity); `token_exp` tracks the short-lived API token (proactive refresh)."""
+        self.vault.put_session(self.msisdn, {
+            "token": bearer,
+            "id_token": tok.get("id_token"),
+            "access_token": tok.get("access_token"),
+            "refresh_token": refresh_token,
+            "exp": bm._jwt_exp(refresh_token or ""),
+            "token_exp": bm._jwt_exp(tok.get("access_token") or ""),
+        })
+
     def request_guest_token(self) -> str:
         return ""   # CIAM has no guest token
 
@@ -218,18 +230,19 @@ class MyXLClient:
         # app uses the id_token as the API bearer (CiamSession.e -> entity.d -> idToken)
         bearer = tok.get("id_token") or tok.get("access_token")
         self.token = bearer
-        self.vault.put_session(self.msisdn, {
-            "token": bearer,
-            "id_token": tok.get("id_token"),
-            "access_token": tok.get("access_token"),
-            "refresh_token": tok.get("refresh_token"),
-            "exp": bm._jwt_exp(tok.get("access_token") or bearer),
-        })
+        self._store(tok, bearer, tok.get("refresh_token"))
         return bearer
+
+    def _saved(self) -> dict:
+        """Stored session ignoring `exp`, so an expired API token can still be refreshed."""
+        try:
+            return (self.vault.data.get("sessions") or {}).get(self.msisdn) or {}
+        except Exception:
+            return self.vault.session(self.msisdn) or {}
 
     def refresh(self) -> str:
         """grant_type=refresh_token -> new id_token (no OTP needed)."""
-        sess = self.vault.session(self.msisdn) or {}
+        sess = self._saved()
         rt = sess.get("refresh_token")
         if not rt:
             raise RuntimeError("no refresh_token")
@@ -246,23 +259,16 @@ class MyXLClient:
         tok = json.loads(txt)
         bearer = tok.get("id_token") or tok.get("access_token")
         self.token = bearer
-        self.vault.put_session(self.msisdn, {
-            "token": bearer,
-            "id_token": tok.get("id_token"),
-            "access_token": tok.get("access_token"),
-            "refresh_token": tok.get("refresh_token") or rt,
-            "exp": bm._jwt_exp(tok.get("access_token") or bearer),
-        })
+        self._store(tok, bearer, tok.get("refresh_token") or rt)
         return bearer
 
     def get_balance(self) -> dict:
         # auto-refresh if token missing/expired
+        sess = self._saved()
         if not self.token:
-            sess = self.vault.session(self.msisdn) or {}
             self.token = sess.get("token")
-        sess = self.vault.session(self.msisdn) or {}
-        exp = sess.get("exp") or 0
-        if self.token and exp and time.time() > int(exp) - 60:
+        tok_exp = sess.get("token_exp") or 0
+        if self.token and tok_exp and time.time() > int(tok_exp) - 120:
             try:
                 self.refresh()
             except Exception:
