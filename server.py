@@ -35,6 +35,7 @@ from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "scripts"))
 import bima_balance as bm
+import myxl_balance as mx
 
 HOME = Path(os.environ.get("FRONTEND_HOME", str(Path.home() / ".bima-frontend")))
 POLL_SEC = float(os.environ.get("POLL_SEC", "60"))
@@ -68,7 +69,7 @@ PROVIDERS = {
     # slots exist in bima_balance (PROVIDER_MYXL/AXISNET) but the clients are not
     # wired into this API yet; cfg stays None so POST /numbers refuses them.
     "axisnet": {"label": "AXISNET", "cfg": None, "vault_dir": VAULTS_DIR / "axisnet"},
-    "myxl":    {"label": "myXL",    "cfg": None, "vault_dir": VAULTS_DIR / "myxl"},
+    "myxl":    {"label": "myXL",    "cfg": mx.PROVIDER_MYXL, "vault_dir": VAULTS_DIR / "myxl"},
 }
 
 
@@ -160,6 +161,8 @@ def _client(provider: str, msisdn: str, vault: Optional[bm.Vault] = None,
     p = PROVIDERS[provider]
     if vault is None:
         vault = bm.Vault(p["vault_dir"])
+    if provider == "myxl":
+        return mx.MyXLClient(vault, msisdn, action=action, cfg=p["cfg"]), vault
     http = bm.Http(p["cfg"]["base_default"], bm.DEFAULT_UA, 45.0)
     return bm.BimaClient(http, vault, msisdn, action=action, cfg=p["cfg"]), vault
 
@@ -327,7 +330,13 @@ def verify(num_id: str, body: VerifyOtp):
         raise HTTPException(400, str(e))
     except Exception as e:
         raise HTTPException(400, f"{type(e).__name__}: {e}")
-    vault.put_session(p["msisdn"], {"token": token, "exp": bm._jwt_exp(token)})
+    # Preserve provider-stored session fields (e.g. myxl refresh_token) instead
+    # of overwriting with a minimal session.
+    sess = vault.session(p["msisdn"]) or {}
+    sess["token"] = token
+    if "exp" not in sess or not sess.get("exp"):
+        sess["exp"] = bm._jwt_exp(token)
+    vault.put_session(p["msisdn"], sess)
     reg = _load_registry()
     reg["numbers"].append({
         "id": num_id, "provider": p["provider"], "msisdn": p["msisdn"],
