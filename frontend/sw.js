@@ -1,5 +1,5 @@
 // Service worker Digitral. Naikkan CACHE_VERSION tiap rilis.
-const CACHE_VERSION = "digitral-v5";
+const CACHE_VERSION = "digitral-v6";
 const SHELL = [
   "/",
   "/manifest.json",
@@ -15,6 +15,7 @@ const SHELL = [
   "/assets/js/offline.js",
   "/assets/js/pwa.js",
   "/assets/js/busy.js",
+  "/assets/js/notif.js",
   "/assets/icon.svg",
   "/assets/icon-192.png",
   "/assets/icon-512.png",
@@ -39,6 +40,19 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      const client = list.find((c) => "url" in c && c.url.startsWith(self.location.origin)) ?? list[0];
+      if (client) {
+        return client.focus();
+      }
+      return self.clients.openWindow("/");
+    }),
+  );
 });
 
 function isApi(pathname) {

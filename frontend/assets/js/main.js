@@ -4,6 +4,7 @@ import { ApiError, api, isNetworkError, messageOf, numberPath, onStale } from ".
 import { withBusy } from "./busy.js";
 import { bindCardActions, render, tick } from "./cards.js";
 import { loadSnapshot, saveSnapshot } from "./offline.js";
+import { initNotif } from "./notif.js";
 import { initPwa } from "./pwa.js";
 import { deleteNumber, confirmReauth, initSheet, openOtp, resendById } from "./sheet.js";
 import {
@@ -186,6 +187,7 @@ function boot() {
   });
   setInterval(tick, 1000);
   initPwa();
+  initNotif();
   load()
     .catch((error) => showPageError(messageOf(error)))
     .finally(() => {
