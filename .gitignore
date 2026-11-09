@@ -7,3 +7,5 @@ __pycache__/
 .claude/
 # mockup sesi brainstorming (lokal, bukan bagian produk)
 .superpowers/
+# direktori lama yang tidak dipakai lagi
+frontendold/

@@ -1,341 +1,262 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f172a">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Digitral">
-<link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/assets/bima.png">
-<link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
-<title>Digitral multi-number dashboard</title>
-<style>
-  :root { --bg:#0f172a; --card:#1e293b; --fg:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --danger:#f87171; --ok:#4ade80; --warn:#fbbf24; }
-  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body { margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--fg); }
-  body { padding-bottom: env(safe-area-inset-bottom); }
-  header { padding:14px 16px; background:#0b1220; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:10; padding-top:calc(14px + env(safe-area-inset-top)); }
-  header h1 { margin:0; font-size:17px; }
-  #status { font-size:12px; color:var(--muted); }
-  #status.offline { color:var(--danger); }
-  main { padding:16px; max-width:1100px; margin:0 auto; }
-  .toolbar { margin-bottom:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-  .grid { display:grid; grid-template-columns:1fr; gap:12px; }
-  @media (min-width:640px) { .grid { grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); } }
-  .card { border-radius:14px; padding:14px; position:relative; overflow:hidden; min-height:120px; background:var(--card); border:1px solid #334155; }
-  .card::before { content:""; position:absolute; right:-10px; bottom:-10px; width:96px; height:96px; background-size:contain; background-repeat:no-repeat; background-position:right bottom; opacity:0.18; pointer-events:none; }
-  .card.provider-bima::before { background-image:url(/assets/bima.png); }
-  .card.provider-myim3::before { background-image:url(/assets/myim3.png); }
-  .card.provider-axisnet::before { background-image:url(/assets/axisnet.png); }
-  .card.pending { border-style:dashed; border-color:var(--warn); }
-  .card h3 { margin:0 0 2px; font-size:16px; display:flex; align-items:center; gap:8px; }
-  .card .badge { font-size:11px; padding:2px 8px; border-radius:999px; background:#334155; color:var(--muted); }
-  .card .badge.pending { background:#78350f; color:#fde68a; }
-  .card .msisdn { color:var(--muted); font-size:13px; margin-bottom:10px; }
-  .row { display:flex; justify-content:space-between; font-size:14px; margin:3px 0; }
-  .row .k { color:var(--muted); }
-  .err { color:var(--danger); font-size:13px; margin-top:8px; }
-  .ok { color:var(--ok); }
-  button { background:var(--accent); color:#0b1220; border:0; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:600; font-size:14px; min-height:40px; }
-  button:disabled { opacity:0.5; cursor:not-allowed; }
-  button.danger { background:var(--danger); color:#fff; }
-  button.ghost { background:transparent; color:var(--muted); border:1px solid #334155; }
-  button.small { padding:6px 10px; font-size:13px; min-height:32px; }
-  .modal-back { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:flex-end; justify-content:center; z-index:50; }
-  @media (min-width:640px) { .modal-back { align-items:center; } }
-  .modal-back.show { display:flex; }
-  .modal { background:var(--card); border-radius:16px 16px 0 0; padding:20px; width:100%; max-width:420px; max-height:90vh; overflow:auto; }
-  @media (min-width:640px) { .modal { border-radius:16px; } }
-  .modal h2 { margin:0 0 12px; font-size:17px; }
-  .modal input, .modal select { width:100%; padding:10px; margin:6px 0 12px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:var(--fg); font-size:16px; }
-  .status { font-size:12px; color:var(--muted); margin-top:8px; }
-  .pending-box { margin-top:10px; padding:10px; background:#0f172a; border-radius:8px; }
-  .pending-box input { margin:6px 0; width:100%; padding:10px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:var(--fg); font-size:16px; }
-  .pending-box input { margin:6px 0; }
-  .actions { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
-  .install-btn { display:none; }
-  .install-btn.show { display:inline-block; }
-</style>
+  <meta charset="utf-8">
+  <title>Digitral - Dompet nomor prabayar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Pantau pulsa, kuota, dan masa aktif semua nomor prabayar dalam satu dompet kartu.">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="color-scheme" content="dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Digitral">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/icon-192.png">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <script type="module" src="/assets/js/main.js"></script>
 </head>
 <body>
-<header>
-  <h1>Digitral</h1>
-  <div style="display:flex;gap:8px;align-items:center">
-    <button id="installBtn" class="ghost small install-btn">Install</button>
-    <span id="status" class="status">connecting…</span>
-  </div>
-</header>
-<main>
-  <div class="toolbar">
-    <button id="addBtn">+ Tambah nomor</button>
-    <button id="refreshBtn" class="ghost">Refresh</button>
-  </div>
-  <div id="grid" class="grid"></div>
-</main>
-
-<div id="modal" class="modal-back">
-  <div class="modal">
-    <h2>Tambah nomor</h2>
-    <label>Provider</label>
-    <select id="prov"></select>
-    <label>Nomor (62…)</label>
-    <input id="msisdn" type="tel" inputmode="numeric" placeholder="628xxxxxxxxxx">
-    <button id="sendOtp">Kirim OTP</button>
-    <div id="otpStep" style="display:none">
-      <label>Kode OTP</label>
-      <input id="otp" inputmode="numeric" placeholder="123456">
-      <button id="verifyOtp">Verifikasi</button>
+  <header class="topbar">
+    <h1 class="brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+        <rect x="2" y="5" width="20" height="14" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
+        <path d="M2 10h20" stroke="currentColor" stroke-width="1.8"></path>
+      </svg>
+      <span>Digitral</span>
+    </h1>
+    <p id="live-status" class="live" role="status" data-state="connecting">
+      <span class="live-dot" aria-hidden="true"></span>
+      <span id="live-text">Menyambung</span>
+    </p>
+    <div class="topbar-actions">
+      <button id="btn-install" class="pill-btn" type="button" hidden>Install</button>
+      <button id="btn-refresh" class="icon-btn" type="button" aria-label="Segarkan semua kartu">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+          <path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </button>
     </div>
-    <div id="modalMsg" class="status"></div>
-    <button id="cancelBtn" class="ghost" style="margin-top:8px">Batal</button>
+  </header>
+
+  <div class="notices">
+    <div id="update-banner" class="notice notice-accent" hidden>
+      <p class="notice-text">Versi baru tersedia.</p>
+      <button id="btn-update" class="btn btn-primary btn-sm" type="button">Muat ulang</button>
+    </div>
+    <div id="ios-hint" class="notice" hidden>
+      <p class="notice-text">Untuk memasang di iPhone: ketuk Bagikan, lalu pilih Tambah ke Layar Utama.</p>
+      <button id="btn-ios-dismiss" class="icon-btn" type="button" aria-label="Tutup petunjuk pemasangan">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+          <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+    </div>
+    <p id="offline-note" class="notice notice-muted" role="status" hidden>Data offline. Menampilkan data terakhir yang tersimpan.</p>
   </div>
-</div>
 
-<script>
-const API = "";
-let pendingId = null;
-if ("serviceWorker" in navigator) { navigator.serviceWorker.register("/sw.js").catch(()=>{}); }
+  <main id="main" class="page">
+    <p id="page-error" class="page-error" role="alert" hidden></p>
 
-async function api(path, opts={}) {
-  const r = await fetch(API + path, {headers:{"Content-Type":"application/json"}, ...opts});
-  const t = await r.text();
-  let j; try { j = JSON.parse(t); } catch { j = {raw:t}; }
-  if (!r.ok) throw new Error(j.detail || j.error || j.message || r.statusText);
-  return j;
-}
+    <section id="empty-state" class="empty" aria-label="Belum ada nomor">
+      <button id="btn-add-empty" class="btn btn-primary btn-lg" type="button">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+          <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
+        </svg>
+        <span>Tambah nomor</span>
+      </button>
+    </section>
 
-async function withBusy(btn, fn) {
-  if (btn.disabled) return;
-  const orig = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = "…";
-  try { await fn(); }
-  finally { btn.disabled = false; btn.textContent = orig; }
-}
+    <div id="groups" class="groups"></div>
+  </main>
 
-function fmtQuota(d) {
-  if (!d) return "-";
-  const r = d.quota;
-  const u = (d.unit || "KB").toUpperCase();
-  if (r == null) return "-";
-  const kb = Number(r);
-  if (u === "KB") {
-    if (kb >= 1024*1024) return (kb/1024/1024).toFixed(2)+" GB";
-    if (kb >= 1024) return (kb/1024).toFixed(1)+" MB";
-    return kb+" KB";
-  }
-  return r+" "+u;
-}
+  <button id="btn-add-fab" class="fab" type="button" hidden>
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+      <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
+    </svg>
+    <span>Tambah nomor</span>
+  </button>
 
-function renderNumber(n) {
-  const d = n.data || {};
-  const pulsa = d.balance ?? "-";
-  const aktif = d.active_until ?? "-";
-  const grace = d.grace_until;
-  const bonstri = d.bonstri;
-  const cls = "card provider-" + (n.provider || "");
-  if (n.pending) {
-    return `
-    <div class="${cls} pending">
-      <h3>${n.label || n.provider} <span class="badge pending">menunggu OTP</span></h3>
-      <div class="msisdn">${n.msisdn}</div>
-      <div class="pending-box">
-        <input id="otp-${n.id}" inputmode="numeric" placeholder="Kode OTP">
-        <div class="actions">
-          <button class="small" onclick="verifyPending('${n.id}')">Verifikasi</button>
-          <button class="small ghost" onclick="resendPending('${n.id}', this)">Kirim ulang</button>
-          <button class="small danger" onclick="removeNum('${n.id}')">Batal</button>
+  <dialog id="sheet" class="sheet" aria-labelledby="sheet-title">
+    <div class="sheet-head">
+      <span class="sheet-grip" aria-hidden="true"></span>
+      <button id="btn-sheet-close" class="icon-btn sheet-close" type="button" aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+          <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="sheet-body">
+      <h2 id="sheet-title" class="sheet-title">Tambah nomor</h2>
+
+      <form id="form-add" class="form" novalidate>
+        <label class="field-label" for="input-msisdn">Nomor ponsel</label>
+        <input id="input-msisdn" class="input input-number" name="msisdn" type="tel" inputmode="numeric" autocomplete="tel" placeholder="08xx xxxx xxxx" required aria-describedby="add-error">
+
+        <fieldset id="operator-list" class="operators">
+          <legend class="field-label">Operator</legend>
+          <div id="operator-options" class="operator-grid"></div>
+        </fieldset>
+
+        <p id="add-error" class="form-error" role="alert" hidden></p>
+
+        <div class="sheet-actions">
+          <button id="btn-add-submit" class="btn btn-primary btn-wide" type="submit">Lanjut</button>
         </div>
-        <div id="msg-${n.id}" class="status"></div>
+      </form>
+
+      <form id="form-otp" class="form" novalidate hidden>
+        <div class="otp-timer">
+          <div id="otp-ring" class="ring ring-lg">
+            <span id="otp-countdown" class="ring-text" role="timer">5:00</span>
+          </div>
+          <p class="otp-hint">
+            Kode dikirim ke <strong id="otp-target" class="otp-target">-</strong>.
+            <span id="otp-status" class="otp-status">Masukkan kode sebelum waktu habis.</span>
+          </p>
+        </div>
+
+        <label class="field-label" for="input-otp">Kode verifikasi</label>
+        <input id="input-otp" class="input input-otp" name="otp" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="8" placeholder="------" required aria-describedby="otp-error">
+
+        <p id="otp-error" class="form-error" role="alert" hidden></p>
+
+        <div class="sheet-actions sheet-actions-grid">
+          <button id="btn-otp-verify" class="btn btn-primary btn-wide" type="submit">Verifikasi</button>
+          <button id="btn-otp-resend" class="btn btn-quiet" type="button">Kirim ulang</button>
+          <button id="btn-otp-cancel" class="btn btn-danger" type="button">Batal</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <dialog id="dialog-confirm" class="sheet sheet-compact" aria-labelledby="confirm-title" aria-describedby="confirm-text">
+    <div class="sheet-head">
+      <span class="sheet-grip" aria-hidden="true"></span>
+    </div>
+    <div class="sheet-body">
+      <h2 id="confirm-title" class="sheet-title">Sesi berakhir</h2>
+      <p id="confirm-text" class="confirm-text">Sesi berakhir. Tambah ulang nomor ini?</p>
+      <p id="confirm-number" class="confirm-number">-</p>
+      <div class="sheet-actions sheet-actions-grid">
+        <button id="btn-confirm-ok" class="btn btn-primary btn-wide" type="button">Tambah ulang</button>
+        <button id="btn-confirm-cancel" class="btn btn-quiet btn-wide" type="button">Nanti saja</button>
       </div>
-    </div>`;
-  }
-  return `
-    <div class="${cls}">
-      <h3>${n.label || n.provider} <span class="badge">${n.provider}</span></h3>
-      <div class="msisdn">${n.msisdn}</div>
-      ${n.ok ? `
-        <div class="row"><span class="k">Pulsa</span><span>Rp ${pulsa}</span></div>
-        <div class="row"><span class="k">Kuota sisa</span><span>${fmtQuota(d)}</span></div>
-        <div class="row"><span class="k">Masa aktif</span><span>${aktif}</span></div>
-        ${grace ? `<div class="row"><span class="k">Grace s/d</span><span>${grace}</span></div>` : ""}
-        ${bonstri != null ? `<div class="row"><span class="k">Bonstri</span><span>${bonstri} pts</span></div>` : ""}
-      ` : `<div class="err">${n.error || "no data"}</div>`}
-      <div class="actions">
-        <button class="ghost small" onclick="refreshOne('${n.id}', this)">Refresh</button>
-        <button class="danger small" onclick="removeNum('${n.id}', this)">Hapus</button>
+    </div>
+  </dialog>
+
+  <template id="tpl-group">
+    <section class="group" data-group>
+      <header class="group-head">
+        <h2 class="group-label" data-field="group-label">-</h2>
+        <p class="group-count"><span data-field="group-count">0</span> <span class="sr-only">nomor terverifikasi</span></p>
+      </header>
+      <div class="group-cards" data-field="group-cards"></div>
+    </section>
+  </template>
+
+  <template id="tpl-card">
+    <article class="card" data-card data-state="ok">
+      <div class="card-face">
+        <img class="card-logo" data-field="logo" src="data:," alt="" width="120" height="120" decoding="async">
+        <div class="card-top">
+          <span class="card-chip" aria-hidden="true"></span>
+          <svg class="card-contactless" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+            <path d="M8 7.5a6.5 6.5 0 0 1 0 9M12 5a10 10 0 0 1 0 14M16 2.5a13.5 13.5 0 0 1 0 19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+          </svg>
+          <span class="card-tag" data-field="label">-</span>
+          <button class="card-menu-btn" type="button" data-action="menu" aria-label="Menu aksi kartu" aria-expanded="false">&#8943;</button>
+        </div>
+        <div class="card-mid">
+          <p class="card-number" data-field="msisdn">&bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; -</p>
+          <p class="card-balance">
+            <span class="card-caption">Pulsa</span>
+            <span class="card-balance-value" data-field="balance">-</span>
+          </p>
+        </div>
+        <dl class="card-foot">
+          <div class="card-stat">
+            <dt>Kuota</dt>
+            <dd data-field="quota">-</dd>
+            <dd class="card-used" data-field="used" hidden></dd>
+          </div>
+          <div class="card-stat">
+            <dt>Aktif</dt>
+            <dd data-field="active">-</dd>
+          </div>
+          <div class="card-stat">
+            <dt>Grace</dt>
+            <dd data-field="grace">-</dd>
+          </div>
+          <div class="card-stat">
+            <dt>Bonstri</dt>
+            <dd data-field="bonstri">-</dd>
+          </div>
+        </dl>
       </div>
-    </div>`;
-}
+    </article>
+  </template>
 
-async function loadNumbers() {
-  const j = await api("/numbers?include_pending=1");
-  const grid = document.getElementById("grid");
-  const enriched = await Promise.all(j.numbers.map(async n => {
-    if (n.pending) return {...n, ok:false};
-    try { const b = await api(`/numbers/${n.id}/balance`); return {...n, ok:true, data:b.balance}; }
-    catch (e) { return {...n, ok:false, error:e.message}; }
-  }));
-  grid.innerHTML = enriched.map(renderNumber).join("") || "<p class='status'>Belum ada nomor. Tambah dengan tombol +.</p>";
-  try { localStorage.setItem("digitral:lastSnapshot", JSON.stringify(enriched)); } catch {}
-}
+  <template id="tpl-card-pending">
+    <article class="card" data-card data-state="pending">
+      <div class="card-face">
+        <img class="card-logo" data-field="logo" src="data:," alt="" width="120" height="120" decoding="async">
+        <div class="card-top">
+          <span class="card-chip" aria-hidden="true"></span>
+          <svg class="card-contactless" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+            <path d="M8 7.5a6.5 6.5 0 0 1 0 9M12 5a10 10 0 0 1 0 14M16 2.5a13.5 13.5 0 0 1 0 19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+          </svg>
+          <span class="card-tag" data-field="label">-</span>
+        </div>
+        <div class="card-mid card-mid-pending">
+          <div class="card-pending-info">
+            <p class="card-number" data-field="msisdn">&bull;&bull;&bull;&bull; &bull;&bull;&bull;&bull; -</p>
+            <p class="card-pending-note" data-field="pending-note">Menunggu kode</p>
+          </div>
+          <div class="ring" data-field="ring">
+            <span class="ring-text" data-field="countdown">5:00</span>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button class="btn btn-primary btn-sm" type="button" data-action="continue">Lanjutkan</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-action="resend" hidden>Kirim ulang</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-action="cancel">Batal</button>
+        </div>
+      </div>
+    </article>
+  </template>
 
-async function refreshOne(id, btn) {
-  await withBusy(btn, async () => { await loadNumbers(); });
-}
+  <template id="tpl-card-ended">
+    <div class="card-ribbon" data-ribbon>
+      <span class="card-ribbon-text" data-field="ribbon-text">Sesi berakhir</span>
+      <button class="ribbon-btn" type="button" data-action="reauth">Tambah ulang</button>
+    </div>
+  </template>
 
-async function removeNum(id, btn) {
-  if (!confirm("Hapus nomor ini dari dashboard?")) return;
-  const run = async () => { await api(`/numbers/${id}`, {method:"DELETE"}); await loadNumbers(); };
-  if (btn) await withBusy(btn, run); else await run();
-}
+  <template id="tpl-card-warn">
+    <p class="card-warn" role="status" data-warn>
+      <span class="card-warn-text" data-field="warn-text">Gagal memuat data.</span>
+      <button class="warn-btn" type="button" data-action="refresh">Coba lagi</button>
+    </p>
+  </template>
 
-async function verifyPending(id) {
-  const otp = document.getElementById(`otp-${id}`).value.trim();
-  const msg = document.getElementById(`msg-${id}`);
-  const btn = event.target;
-  await withBusy(btn, async () => {
-    try {
-      await api(`/numbers/${id}/verify`, {method:"POST", body:JSON.stringify({otp})});
-      msg.textContent = "Terverifikasi ✓";
-      await loadNumbers();
-    } catch (e) { msg.textContent = "Gagal: "+e.message; throw e; }
-  });
-}
+  <template id="tpl-operator">
+    <label class="operator" data-option>
+      <input class="operator-radio" type="radio" name="provider" value="" data-field="radio">
+      <span class="operator-body">
+        <img class="operator-logo" data-field="logo" src="data:," alt="" width="32" height="32" decoding="async">
+        <span class="operator-name" data-field="label">-</span>
+      </span>
+    </label>
+  </template>
 
-async function resendPending(id, btn) {
-  await withBusy(btn, async () => {
-    try {
-      const r = await api(`/numbers/${id}/resend`, {method:"POST"});
-      document.getElementById(`msg-${id}`).textContent = "OTP terkirim ulang.";
-    } catch (e) { document.getElementById(`msg-${id}`).textContent = "Gagal: "+e.message; throw e; }
-  });
-}
-
-const modal = document.getElementById("modal");
-document.getElementById("addBtn").onclick = async () => {
-  const provs = await api("/providers");
-  const sel = document.getElementById("prov");
-  sel.innerHTML = provs.filter(p=>p.available).map(p=>`<option value="${p.id}">${p.label}</option>`).join("");
-  document.getElementById("msisdn").value = "";
-  document.getElementById("otp").value = "";
-  document.getElementById("otpStep").style.display = "none";
-  document.getElementById("modalMsg").textContent = "";
-  pendingId = null;
-  modal.classList.add("show");
-};
-
-document.getElementById("prov").addEventListener("change", () => {
-  if (pendingId) { api(`/numbers/${pendingId}`, {method:"DELETE"}).catch(()=>{}); pendingId = null; }
-  document.getElementById("msisdn").value = "";
-  document.getElementById("otp").value = "";
-  document.getElementById("otpStep").style.display = "none";
-  document.getElementById("modalMsg").textContent = "";
-});
-
-document.getElementById("sendOtp").onclick = async (e) => {
-  const btn = e.target;
-  await withBusy(btn, async () => {
-    const msisdn = document.getElementById("msisdn").value.trim();
-    const provider = document.getElementById("prov").value;
-    const msg = document.getElementById("modalMsg");
-    try {
-      const r = await api("/numbers", {method:"POST", body:JSON.stringify({provider, msisdn})});
-      pendingId = r.id;
-      if (r.otp_required === false) {
-        msg.textContent = "Sesi sudah ada — tanpa OTP ✓";
-        modal.classList.remove("show");
-        await loadNumbers();
-      } else {
-        msg.textContent = "OTP terkirim. Masukkan kode.";
-        document.getElementById("otpStep").style.display = "block";
-      }
-    } catch (err) { msg.textContent = "Gagal: "+err.message; throw err; }
-  });
-};
-
-document.getElementById("verifyOtp").onclick = async (e) => {
-  const btn = e.target;
-  await withBusy(btn, async () => {
-    const otp = document.getElementById("otp").value.trim();
-    const msg = document.getElementById("modalMsg");
-    try {
-      await api(`/numbers/${pendingId}/verify`, {method:"POST", body:JSON.stringify({otp})});
-      msg.textContent = "Terverifikasi ✓";
-      pendingId = null;
-      modal.classList.remove("show");
-      await loadNumbers();
-    } catch (err) { msg.textContent = "Gagal: "+err.message; throw err; }
-  });
-};
-
-document.getElementById("cancelBtn").onclick = async () => {
-  if (pendingId) { try { await api(`/numbers/${pendingId}`, {method:"DELETE"}); } catch {} pendingId = null; }
-  modal.classList.remove("show");
-};
-
-document.getElementById("refreshBtn").onclick = async (e) => {
-  await withBusy(e.target, async () => { await loadNumbers(); });
-};
-
-// offline snapshot restore
-function restoreSnapshot() {
-  try {
-    const raw = localStorage.getItem("digitral:lastSnapshot");
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    const grid = document.getElementById("grid");
-    if (grid.children.length === 0) grid.innerHTML = data.map(renderNumber).join("");
-  } catch {}
-}
-restoreSnapshot();
-
-// status
-const statusEl = document.getElementById("status");
-function setOnline() {
-  statusEl.textContent = navigator.onLine ? "live" : "offline";
-  statusEl.classList.toggle("offline", !navigator.onLine);
-}
-window.addEventListener("online", () => { setOnline(); loadNumbers(); });
-window.addEventListener("offline", setOnline);
-setOnline();
-
-// SSE
-function connectStream() {
-  const es = new EventSource("/stream");
-  es.onmessage = e => {
-    try {
-      const p = JSON.parse(e.data);
-      if (p.numbers) {
-        const grid = document.getElementById("grid");
-        grid.innerHTML = p.numbers.map(renderNumber).join("") || "<p class='status'>Belum ada nomor. Tambah dengan tombol +.</p>";
-        try { localStorage.setItem("digitral:lastSnapshot", JSON.stringify(p.numbers)); } catch {}
-        setOnline();
-      }
-    } catch {}
-  };
-  es.onerror = () => { statusEl.textContent = "stream terputus, retry…"; statusEl.classList.add("offline"); };
-  es.onopen = () => setOnline();
-}
-connectStream();
-loadNumbers();
-
-// install prompt
-let deferredPrompt = null;
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  document.getElementById("installBtn").classList.add("show");
-});
-document.getElementById("installBtn").onclick = async () => {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  await deferredPrompt.userChoice;
-  deferredPrompt = null;
-  document.getElementById("installBtn").classList.remove("show");
-};
-</script>
+  <template id="tpl-card-menu">
+    <div class="card-menu" data-menu>
+      <button class="menu-item" type="button" data-action="refresh">Segarkan</button>
+      <button class="menu-item menu-item-danger" type="button" data-action="delete">Hapus</button>
+    </div>
+  </template>
 </body>
 </html>

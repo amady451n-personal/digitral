@@ -1,42 +1,95 @@
-const CACHE = "digitral-shell-v1";
-const SHELL = ["/", "/manifest.json", "/assets/icon.svg", "/assets/bima.png", "/assets/myim3.png", "/assets/axisnet.png"];
+// Service worker Digitral. Naikkan CACHE_VERSION tiap rilis.
+const CACHE_VERSION = "digitral-v5";
+const SHELL = [
+  "/",
+  "/manifest.json",
+  "/assets/css/app.css",
+  "/assets/js/main.js",
+  "/assets/js/api.js",
+  "/assets/js/store.js",
+  "/assets/js/order.js",
+  "/assets/js/format.js",
+  "/assets/js/cards.js",
+  "/assets/js/sheet.js",
+  "/assets/js/stream.js",
+  "/assets/js/offline.js",
+  "/assets/js/pwa.js",
+  "/assets/js/busy.js",
+  "/assets/icon.svg",
+  "/assets/icon-192.png",
+  "/assets/icon-512.png",
+];
+const API_PREFIXES = ["/health", "/providers", "/numbers"];
+const STALE_HEADER = "x-from-cache";
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(CACHE_VERSION).then((cache) => cache.addAll(SHELL.map((url) => new Request(url, { cache: "reload" })))));
 });
 
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((names) => Promise.all(names.filter((name) => name !== CACHE_VERSION).map((name) => caches.delete(name))))
+      .then(() => self.clients.claim()),
   );
 });
 
-// network-first for API, cache-first for shell
-self.addEventListener("fetch", (e) => {
-  const url = new URL(e.request.url);
-  if (url.pathname.startsWith("/numbers") || url.pathname.startsWith("/providers") ||
-      url.pathname.startsWith("/stream") || url.pathname.startsWith("/health")) {
-    e.respondWith(
-      fetch(e.request).then((r) => {
-        // cache a clone of successful GETs for offline fallback
-        if (e.request.method === "GET" && r.ok) {
-          const clone = r.clone();
-          caches.open(CACHE).then((c) => c.put(e.request, clone));
-        }
-        return r;
-      }).catch(() => caches.match(e.request))
-    );
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
+function isApi(pathname) {
+  return API_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) {
+    return cached;
+  }
+  const response = await fetch(request);
+  if (response.ok) {
+    const cache = await caches.open(CACHE_VERSION);
+    await cache.put(request, response.clone());
+  }
+  return response;
+}
+
+function markStale(response) {
+  const headers = new Headers(response.headers);
+  headers.set(STALE_HEADER, "1");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(CACHE_VERSION);
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    const cached = await caches.match(request);
+    if (cached) {
+      return markStale(cached);
+    }
+    throw error;
+  }
+}
+
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+  if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname === "/stream") {
     return;
   }
-  e.respondWith(
-    caches.match(e.request).then((cached) => cached || fetch(e.request).then((r) => {
-      if (r.ok) {
-        const clone = r.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, clone));
-      }
-      return r;
-    }))
-  );
+  if (isApi(url.pathname)) {
+    event.respondWith(networkFirst(request));
+  } else if (url.pathname === "/" || url.pathname === "/manifest.json" || url.pathname.startsWith("/assets/")) {
+    event.respondWith(cacheFirst(request));
+  }
 });
