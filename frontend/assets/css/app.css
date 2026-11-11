@@ -512,6 +512,21 @@ p {
   background: linear-gradient(135deg, #f3dc95 0%, #c9a24a 100%);
 }
 
+/* Chip bergaris arsir: kartu sudah lewat masa aktif. */
+.card[data-expired="1"] .card-chip {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 4px,
+      rgb(127 29 29 / 75%) 4px 6px
+    ),
+    linear-gradient(135deg, #f3dc95 0%, #c9a24a 52%, #e9cd7c 100%);
+}
+
+.card[data-expired="1"] .card-chip::after {
+  background: transparent;
+}
+
 .card-contactless {
   flex: none;
   color: var(--card-ink);
