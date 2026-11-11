@@ -111,7 +111,9 @@ function syncOverlay(card, selector, templateId, active) {
 
 function syncStatus(card, item) {
   const ended = isEnded(item);
-  card.dataset.expired = isExpired((item.data ?? {}).active_until) ? "1" : "0";
+  const expired = isExpired((item.data ?? {}).active_until);
+  card.dataset.expired = expired ? "1" : "0";
+  card.querySelector(".card-chip")?.classList.toggle("is-expired", expired);
   syncOverlay(card, "[data-ribbon]", "tpl-card-ended", ended);
   const warnText = ended ? null : warnTextOf(item);
   const warn = syncOverlay(card, "[data-warn]", "tpl-card-warn", warnText !== null);
