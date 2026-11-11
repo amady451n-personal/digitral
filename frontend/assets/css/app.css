@@ -622,6 +622,13 @@ p {
   word-break: keep-all;
 }
 
+/* Masa aktif lewat: saldo & tanggal aktif memakai tint aksen provider. */
+.card[data-expired="1"] .card-balance-value,
+.card[data-expired="1"] .card-stat [data-field="active"] {
+  color: #ffd166;
+  color: color-mix(in srgb, var(--accent) 45%, #fff);
+}
+
 .card-stat .card-used {
   color: #b8c3d6;
   font-size: 10px;

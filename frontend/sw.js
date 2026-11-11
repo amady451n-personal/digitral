@@ -1,5 +1,5 @@
 // Service worker Digitral. Naikkan CACHE_VERSION tiap rilis.
-const CACHE_VERSION = "digitral-v6";
+const CACHE_VERSION = "digitral-v7";
 const SHELL = [
   "/",
   "/manifest.json",
@@ -9,6 +9,7 @@ const SHELL = [
   "/assets/js/store.js",
   "/assets/js/order.js",
   "/assets/js/format.js",
+  "/assets/js/expiry.js",
   "/assets/js/cards.js",
   "/assets/js/sheet.js",
   "/assets/js/stream.js",

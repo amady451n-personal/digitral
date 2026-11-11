@@ -1,6 +1,7 @@
 // Notifikasi Chrome Android PWA: masa aktif lewat -> bantu peringatan harian.
 // Tidak Web Push (tanpa VAPID), jadi hanya muncul saat PWA aktif & menerima data.
 
+import { dateKey, daysPast } from "./expiry.js";
 import { allNumbers, subscribe } from "./store.js";
 
 const ENABLED_KEY = "digitral:notif:enabled";
@@ -23,28 +24,6 @@ function setEnabled(v) {
   } catch {
     // ignore
   }
-}
-
-function localMidnight(d = new Date()) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function parseDate(str) {
-  if (!str) {
-    return null;
-  }
-  const d = new Date(String(str).replace(/ /g, "T"));
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function daysPast(activeUntil) {
-  const d = parseDate(activeUntil);
-  if (!d) {
-    return null;
-  }
-  return Math.floor((localMidnight().getTime() - localMidnight(d).getTime()) / 86400000);
 }
 
 function notifiedKey(id, day) {
@@ -83,14 +62,14 @@ export async function checkGraceNotifications(items) {
   if (!isEnabled() || !("Notification" in globalThis) || Notification.permission !== "granted") {
     return;
   }
-  const today = localMidnight().toISOString().slice(0, 10);
+  const today = dateKey();
   for (const item of (items || [])) {
     if (item.pending) {
       continue;
     }
     const data = item.data || {};
     const past = daysPast(data.active_until);
-    if (past === null || past < 0) {
+    if (past === null || past <= 0) {
       continue;
     }
     const key = notifiedKey(item.id, today);

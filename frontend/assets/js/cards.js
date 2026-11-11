@@ -1,6 +1,7 @@
 // Render kartu & grup. Data API hanya masuk lewat textContent / properti DOM.
 
 import { withBusy } from "./busy.js";
+import { isExpired } from "./expiry.js";
 import {
   OTP_TTL_SECONDS, cardColors, formatCountdown, formatQuota, formatRupiah,
   isBlank, maskMsisdn, remainingSeconds, textOrDash,
@@ -110,6 +111,7 @@ function syncOverlay(card, selector, templateId, active) {
 
 function syncStatus(card, item) {
   const ended = isEnded(item);
+  card.dataset.expired = isExpired((item.data ?? {}).active_until) ? "1" : "0";
   syncOverlay(card, "[data-ribbon]", "tpl-card-ended", ended);
   const warnText = ended ? null : warnTextOf(item);
   const warn = syncOverlay(card, "[data-warn]", "tpl-card-warn", warnText !== null);
