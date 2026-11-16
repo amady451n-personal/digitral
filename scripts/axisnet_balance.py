@@ -368,6 +368,21 @@ def _strip_exp(value):
     return str(value).replace("Exp on ", "").strip()
 
 
+def _to_mb(text: str) -> str:
+    """'12.23 GB' / '410.00 MB' / '530 KB' -> MB uniform ('12531.72 MB')."""
+    t = str(text or "").strip().upper()
+    try:
+        if t.endswith("GB"):
+            return f"{float(t[:-2]) * 1024:.2f} MB"
+        if t.endswith("MB"):
+            return f"{float(t[:-2]):.2f} MB"
+        if t.endswith("KB"):
+            return f"{float(t[:-2]) / 1024:.2f} MB"
+    except ValueError:
+        pass
+    return str(text)
+
+
 # --- client adapter for server.py (duck-types bima_balance.BimaClient) --------
 _AX_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
           "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
@@ -428,6 +443,8 @@ class AxisnetClient:
                 continue
             if p.get("unlimited"):
                 sisa = f"{sisa} (UNLIMITED)"
+            else:
+                sisa = _to_mb(sisa)
             pkgs.append({"name": p.get("nama"), "remaining": sisa, "unit": ""})
         return {
             "balance": dash.get("pulsa"),

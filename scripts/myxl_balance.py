@@ -318,7 +318,7 @@ class MyXLClient:
                 rem = int(bnf.get("remaining") or 0)
                 mb = rem // (1024 * 1024)
                 name = (bnf.get("name") or "").strip()
-                pkgs.append({"name": name, "remaining": f"{mb} MB" if mb > 0 else "0", "unit": ""})
+                pkgs.append({"name": name, "remaining": f"{mb} MB", "unit": ""})
         return {
             "balance": b.get("remaining"),
             "quota": total_b // 1024,
