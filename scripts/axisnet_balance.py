@@ -421,10 +421,14 @@ class AxisnetClient:
             raise RuntimeError("no token")
         dash = axisnet_dashboard(self.http, self.token, self.msisdn)
         # normalize to the same simple shape as bima/myIM3/myXL
-        pkgs = [
-            {"name": p.get("nama"), "remaining": str(p.get("sisa") or "").replace("SISA ", "").strip(), "unit": ""}
-            for p in dash.get("paket") or [] if p.get("sisa")
-        ]
+        pkgs = []
+        for p in dash.get("paket") or []:
+            sisa = str(p.get("sisa") or "").replace("SISA ", "").strip()
+            if not sisa:
+                continue
+            if p.get("unlimited"):
+                sisa = f"{sisa} (UNLIMITED)"
+            pkgs.append({"name": p.get("nama"), "remaining": sisa, "unit": ""})
         return {
             "balance": dash.get("pulsa"),
             "quota": dash.get("kuota"),

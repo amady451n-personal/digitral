@@ -307,24 +307,18 @@ class MyXLClient:
         rem_b = int(quota.get("remaining") or 0)
         used_b = total_b - rem_b if total_b >= rem_b else 0
         unlimited = bool(quota.get("is_unlimited"))
-        # per-package remaining: benefits carry byte counts; a benefit with
-        # remaining 0 but total > 0 is fully throttled (FUP) -> show 0.
+        # per-package remaining: benefits carry byte counts; remaining 0 with
+        # total > 0 means throttled (FUP). Format: MB uniform, "0" for empty.
         pkgs = []
         for grp in qd_data.get("quotas") or []:
             for bnf in grp.get("benefits") or []:
                 total = int(bnf.get("total") or 0)
-                rem = int(bnf.get("remaining") or 0)
                 if total <= 0:
                     continue
+                rem = int(bnf.get("remaining") or 0)
+                mb = rem // (1024 * 1024)
                 name = (bnf.get("name") or "").strip()
-                kb = rem // 1024
-                if kb >= 1024 * 1024:
-                    amt = f"{kb / (1024 * 1024):.2f} GB"
-                elif kb >= 1024:
-                    amt = f"{kb / 1024:.0f} MB"
-                else:
-                    amt = f"{kb} KB"
-                pkgs.append({"name": name, "remaining": amt, "unit": ""})
+                pkgs.append({"name": name, "remaining": f"{mb} MB" if mb > 0 else "0", "unit": ""})
         return {
             "balance": b.get("remaining"),
             "quota": total_b // 1024,

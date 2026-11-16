@@ -52,6 +52,7 @@ import re
 import sys
 import time
 import urllib.error
+from datetime import datetime
 import urllib.request
 import uuid
 from pathlib import Path
@@ -747,23 +748,36 @@ def parse_dashboard(dash: dict) -> dict:
       prepaidinfo.balance / cardactiveuntil / graceperioduntil
       summary.data.remainingquota|usedquota|quotaunit|isunlimited
       bonstriDetails.totalPoints
+      packdata.packageslist[]: Quotas[] (sisa per paket, MB); total_data = ukuran paket
     """
     summ = dash.get("summary") or {}
     data = summ.get("data") or {}
     prep = dash.get("prepaidinfo") or {}
+
+    today = datetime.now().date()
     pkgs = []
     for p in (dash.get("packdata") or {}).get("packageslist") or []:
-        total = int(p.get("total_data") or 0)
-        if total <= 0:
+        # skip paket yang sudah berakhir (EndDate "DD.MM.YYYY")
+        try:
+            end = datetime.strptime(str(p.get("EndDate") or ""), "%d.%m.%Y").date()
+        except ValueError:
+            end = None
+        if end is not None and end < today:
             continue
-        gb = total / (1024 * 1024 * 1024)
-        amt = f"{gb:.2f} GB" if gb >= 1 else f"{total / (1024 * 1024):.0f} MB"
-        pkgs.append({"name": (p.get("PackageName") or "").strip(), "remaining": amt, "unit": ""})
+        # sisa per paket dari Quotas[] (unit DATA saja; MONETARY/Menit bukan kuota)
+        for q in p.get("Quotas") or []:
+            if not isinstance(q, dict) or str(q.get("quotaUnit") or "").upper() != "MB":
+                continue
+            rem = int(q.get("remainingQuota") or 0)
+            name = (p.get("PackageName") or q.get("name") or "").strip()
+            if not name:
+                continue
+            pkgs.append({"name": name, "remaining": f"{rem} MB", "unit": ""})
     return {
         "balance": prep.get("balance") or (dash.get("packdata") or {}).get("lastbalance"),
         "quota": data.get("remainingquota"),
         "unit": (str(data.get("quotaunit") or "KB")).upper(),
-        "used": data.get("usedquota"),
+        "used": None if (data.get("usedquota") or 0) < 0 else data.get("usedquota"),
         "unlimited": bool(data.get("isunlimited")),
         "active_until": prep.get("cardactiveuntil"),
         "grace_until": prep.get("graceperioduntil"),
