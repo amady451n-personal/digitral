@@ -9,3 +9,5 @@ __pycache__/
 .superpowers/
 # direktori lama yang tidak dipakai lagi
 frontendold/
+# secrets: VAPID keys & env docker-compose
+.env

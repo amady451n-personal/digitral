@@ -6,6 +6,7 @@ import { bindCardActions, render, tick } from "./cards.js";
 import { loadSnapshot, saveSnapshot } from "./offline.js";
 import { initNotif } from "./notif.js";
 import { initPwa } from "./pwa.js";
+import { initPush, watchResubscribe } from "./push.js";
 import { deleteNumber, confirmReauth, initSheet, openOtp, resendById } from "./sheet.js";
 import {
   allNumbers, applyStream, claimRefresh, getNumber, mergeSnapshotData, releaseRefresh, restore, setBalance, setNumbers, setOffline, setProviders,
@@ -188,6 +189,8 @@ function boot() {
   setInterval(tick, 1000);
   initPwa();
   initNotif();
+  initPush();
+  watchResubscribe();
   load()
     .catch((error) => showPageError(messageOf(error)))
     .finally(() => {

@@ -435,6 +435,22 @@ def stream():
     return StreamingResponse(gen(), media_type="text/event-stream")
 
 
+# ---------- web push (VAPID) ----------
+@app.get("/push/public-key")
+def push_public_key():
+    from push_notify import ensure_vapid
+    _, pub = ensure_vapid()
+    return {"public_key": pub}
+
+@app.post("/push/subscribe")
+async def push_subscribe(sub: Dict[str, Any]):
+    from push_notify import add_sub
+    if not isinstance(sub, dict) or not sub.get("endpoint"):
+        raise HTTPException(400, "endpoint required")
+    new, total = add_sub(sub)
+    return {"ok": True, "new": new, "total": total}
+
+
 # ---------- minimal built-in dashboard (no build step) ----------
 @app.get("/", response_class=HTMLResponse)
 def index():
@@ -445,7 +461,10 @@ def index():
 
 
 if __name__ == "__main__":
+    import threading
     import uvicorn
+    from push_notify import daily_loop
     HOME.mkdir(parents=True, exist_ok=True)
     VAULTS_DIR.mkdir(parents=True, exist_ok=True)
+    threading.Thread(target=daily_loop, daemon=True).start()
     uvicorn.run(app, host=os.environ.get("HOST", "0.0.0.0"), port=int(os.environ.get("PORT", "8765")))

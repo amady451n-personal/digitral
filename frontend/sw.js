@@ -1,5 +1,5 @@
 // Service worker Digitral. Naikkan CACHE_VERSION tiap rilis.
-const CACHE_VERSION = "digitral-v10";
+const CACHE_VERSION = "digitral-v11";
 const SHELL = [
   "/",
   "/manifest.json",
@@ -16,6 +16,7 @@ const SHELL = [
   "/assets/js/pwa.js",
   "/assets/js/busy.js",
   "/assets/js/notif.js",
+  "/assets/js/push.js",
   "/assets/icon.svg",
   "/assets/icon-192.png",
   "/assets/icon-512.png",
@@ -51,6 +52,31 @@ self.addEventListener("notificationclick", (event) => {
         return client.focus();
       }
       return self.clients.openWindow("/");
+    }),
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data.json();
+  } catch {
+    data = { body: event.data?.text() };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Digitral", {
+      body: data.body || "",
+      tag: data.tag,
+      icon: "/assets/icon-192.png",
+      badge: "/assets/icon-192.png",
+    }),
+  );
+});
+
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    self.clients.matchAll({ includeUncontrolled: true }).then((all) => {
+      all.forEach((c) => c.postMessage({ type: "push-resubscribe" }));
     }),
   );
 });
