@@ -751,6 +751,14 @@ def parse_dashboard(dash: dict) -> dict:
     summ = dash.get("summary") or {}
     data = summ.get("data") or {}
     prep = dash.get("prepaidinfo") or {}
+    pkgs = []
+    for p in (dash.get("packdata") or {}).get("packageslist") or []:
+        total = int(p.get("total_data") or 0)
+        if total <= 0:
+            continue
+        gb = total / (1024 * 1024 * 1024)
+        amt = f"{gb:.2f} GB" if gb >= 1 else f"{total / (1024 * 1024):.0f} MB"
+        pkgs.append({"name": (p.get("PackageName") or "").strip(), "remaining": amt, "unit": ""})
     return {
         "balance": prep.get("balance") or (dash.get("packdata") or {}).get("lastbalance"),
         "quota": data.get("remainingquota"),
@@ -759,6 +767,7 @@ def parse_dashboard(dash: dict) -> dict:
         "unlimited": bool(data.get("isunlimited")),
         "active_until": prep.get("cardactiveuntil"),
         "grace_until": prep.get("graceperioduntil"),
+        "package_quotas": pkgs,
         "bonstri": (dash.get("bonstriDetails") or {}).get("totalPoints"),
     }
 

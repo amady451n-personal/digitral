@@ -300,13 +300,31 @@ class MyXLClient:
         qd_data = (qd.get("data") or {}) if isinstance(qd, dict) else {}
         def _fmt_ts(ts):
             try:
-                return datetime.fromtimestamp(int(ts)).strftime("%Y-%m-%d")
+                return datetime.fromtimestamp(int(ts)).strftime("%d %b %Y")
             except Exception:
                 return None
         total_b = int(quota.get("total") or 0)
         rem_b = int(quota.get("remaining") or 0)
         used_b = total_b - rem_b if total_b >= rem_b else 0
         unlimited = bool(quota.get("is_unlimited"))
+        # per-package remaining: benefits carry byte counts; a benefit with
+        # remaining 0 but total > 0 is fully throttled (FUP) -> show 0.
+        pkgs = []
+        for grp in qd_data.get("quotas") or []:
+            for bnf in grp.get("benefits") or []:
+                total = int(bnf.get("total") or 0)
+                rem = int(bnf.get("remaining") or 0)
+                if total <= 0:
+                    continue
+                name = (bnf.get("name") or "").strip()
+                kb = rem // 1024
+                if kb >= 1024 * 1024:
+                    amt = f"{kb / (1024 * 1024):.2f} GB"
+                elif kb >= 1024:
+                    amt = f"{kb / 1024:.0f} MB"
+                else:
+                    amt = f"{kb} KB"
+                pkgs.append({"name": name, "remaining": amt, "unit": ""})
         return {
             "balance": b.get("remaining"),
             "quota": total_b // 1024,
@@ -315,6 +333,7 @@ class MyXLClient:
             "unlimited": unlimited,
             "active_until": _fmt_ts(b.get("expired_at")),
             "grace_until": _fmt_ts(baldata.get("grace_end_date")),
+            "package_quotas": pkgs,
             "bonstri": None,
             "subscription_status": baldata.get("subscription_status"),
         }

@@ -1,6 +1,6 @@
 // State aplikasi: provider + nomor (terverifikasi dan pending).
 
-const DATA_KEYS = ["balance", "quota", "unit", "used", "unlimited", "active_until", "grace_until", "bonstri"];
+const DATA_KEYS = ["balance", "quota", "unit", "used", "unlimited", "active_until", "grace_until", "package_quotas"];
 const listeners = [];
 const numbers = new Map();
 const inflight = new Set();

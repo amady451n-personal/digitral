@@ -130,14 +130,16 @@ function syncStatus(card, item) {
 function fillData(card, item) {
   const data = item.data ?? {};
   field(card, "balance").textContent = formatRupiah(data.balance);
-  field(card, "quota").textContent = formatQuota(data.quota, data.unit, data.unlimited);
+  const pkgs = Array.isArray(data.package_quotas) ? data.package_quotas.filter((p) => !isBlank(p?.remaining)) : [];
+  field(card, "quota").textContent = pkgs.length
+    ? pkgs.map((p) => p.remaining).join(" | ")
+    : formatQuota(data.quota, data.unit, data.unlimited);
   const used = field(card, "used");
   const hasUsed = !isBlank(data.used);
   used.hidden = !hasUsed;
   used.textContent = hasUsed ? `terpakai ${formatQuota(data.used, data.unit, false)}` : "";
   field(card, "active").textContent = textOrDash(data.active_until);
   field(card, "grace").textContent = textOrDash(data.grace_until);
-  field(card, "bonstri").textContent = textOrDash(data.bonstri);
 }
 
 function createEntry(kind, templateId) {

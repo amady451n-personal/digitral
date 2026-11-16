@@ -654,6 +654,11 @@ p {
   font-weight: 500;
 }
 
+/* Kuota membentang dua kolom di baris bawah. */
+.card-stat-wide {
+  grid-column: 1 / -1;
+}
+
 /* Kartu menunggu kode: redup, bergaris diagonal. */
 .card[data-state="pending"] .card-face {
   background:
