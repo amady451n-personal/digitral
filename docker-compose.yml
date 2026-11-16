@@ -12,7 +12,7 @@ services:
       TZ: ${TZ:-Asia/Jakarta}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
-      VAPID_MAILTO: ${VAPID_MAILTO:-mailto:admin@example.com}
+      VAPID_MAILTO: ${VAPID_MAILTO:-mailto:kamaya021@gmail.com}
       # DEVICE_PROFILE: /app/profile.json   # optional: mount a real device profile
     volumes:
       - digitral_data:/app/data
