@@ -18,7 +18,7 @@ import base64
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -222,7 +222,7 @@ def daily_loop(run_hour: int = 8) -> None:
         now = datetime.now()
         target = now.replace(hour=run_hour, minute=0, second=0, microsecond=0)
         if now >= target:
-            target += _time.timedelta(days=1)
+            target += timedelta(days=1)
         wait = max(0.0, (target - now).total_seconds())
         print(f"[push] next daily check at {target}", flush=True)
         _time.sleep(wait)
