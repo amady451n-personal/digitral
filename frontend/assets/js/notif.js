@@ -49,6 +49,10 @@ async function fire(item, days, urgent, graceText) {
       tag,
       renotify: false,
       requireInteraction: urgent,
+      vibrate: urgent ? [0, 120, 90, 120] : [0, 80],
+      lang: "id",
+      dir: "ltr",
+      timestamp: Date.now(),
       icon: "/assets/icon-192.png",
       badge: "/assets/icon-192.png",
     });
@@ -119,15 +123,44 @@ function renderButton(btn) {
   }
   const supported = "Notification" in globalThis;
   const granted = supported && Notification.permission === "granted";
+  const denied = supported && Notification.permission === "denied";
   const enabled = granted && isEnabled();
   btn.disabled = !supported;
   btn.dataset.enabled = enabled ? "1" : "0";
-  btn.textContent = enabled ? "🔔" : "🔕";
-  btn.title = !supported
+  btn.setAttribute("aria-pressed", enabled ? "true" : "false");
+  const label = !supported
     ? "Notifikasi tidak didukung"
-    : granted
-      ? (enabled ? "Notifikasi aktif" : "Klik untuk aktifkan notifikasi")
-      : "Permission notifikasi ditolak/belum diberikan";
+    : enabled
+      ? "Nonaktifkan notifikasi masa tenggang"
+      : denied
+        ? "Notifikasi diblokir — buka pengaturan situs"
+        : "Aktifkan notifikasi masa tenggang";
+  btn.setAttribute("aria-label", label);
+  btn.title = label;
+}
+
+let noticeTimer = 0;
+
+// Pesan inline menggantikan alert() agar tidak memblokir & sesuai tema.
+function showNotice(message) {
+  const host = document.querySelector(".notices");
+  if (!host) {
+    return;
+  }
+  let el = document.getElementById("notif-note");
+  if (!el) {
+    el = document.createElement("p");
+    el.id = "notif-note";
+    el.className = "notice notice-muted";
+    el.setAttribute("role", "status");
+    host.append(el);
+  }
+  el.textContent = message;
+  el.hidden = false;
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => {
+    el.hidden = true;
+  }, 6000);
 }
 
 export function initNotif() {
@@ -138,12 +171,15 @@ export function initNotif() {
       return;
     }
     if (Notification.permission === "denied") {
-      // Tidak bisa re-prompt; biarkan user ubah di pengaturan browser.
-      alert("Permission notifikasi ditolak. Aktifkan melalui pengaturan situs.");
+      // Tidak bisa re-prompt; beri tahu lewat notice inline, bukan alert().
+      showNotice("Notifikasi diblokir. Aktifkan izin notifikasi untuk situs ini di pengaturan browser.");
       return;
     }
     if (Notification.permission !== "granted") {
-      await requestEnable();
+      const ok = await requestEnable();
+      if (!ok && Notification.permission === "denied") {
+        showNotice("Notifikasi diblokir. Aktifkan izin notifikasi untuk situs ini di pengaturan browser.");
+      }
     } else {
       setEnabled(!isEnabled());
       if (isEnabled()) {

@@ -185,10 +185,38 @@ p {
   border-radius: 50%;
   background: rgb(30 41 59 / 70%);
   color: var(--ink);
+  transition-property: transform, background-color, border-color, color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
 }
 
 .icon-btn:active {
   background: var(--surface);
+  transform: scale(0.96);
+}
+
+/* Notifikasi: ikon bel SVG, state aktif ditandai accent + glow halus. */
+.notif-btn {
+  color: var(--muted);
+}
+
+.notif-btn .notif-on {
+  display: none;
+}
+
+.notif-btn[data-enabled="1"] {
+  border-color: rgb(56 189 248 / 55%);
+  background: rgb(56 189 248 / 12%);
+  color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(56 189 248 / 10%);
+}
+
+.notif-btn[data-enabled="1"] .notif-on {
+  display: block;
+}
+
+.notif-btn[data-enabled="1"] .notif-off {
+  display: none;
 }
 
 .icon-btn:disabled,
@@ -1257,5 +1285,9 @@ p {
   .fab,
   .operator-body {
     transition: none;
+  }
+
+  .icon-btn:active {
+    transform: none;
   }
 }

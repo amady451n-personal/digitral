@@ -1,5 +1,5 @@
 // Service worker Digitral. Naikkan CACHE_VERSION tiap rilis.
-const CACHE_VERSION = "digitral-v12";
+const CACHE_VERSION = "digitral-v13";
 const SHELL = [
   "/",
   "/manifest.json",
@@ -63,10 +63,18 @@ self.addEventListener("push", (event) => {
   } catch {
     data = { body: event.data?.text() };
   }
+  const tag = String(data.tag || "");
+  const urgent = tag.startsWith("grace-");
   event.waitUntil(
     self.registration.showNotification(data.title || "Digitral", {
       body: data.body || "",
       tag: data.tag,
+      renotify: false,
+      requireInteraction: urgent,
+      vibrate: urgent ? [0, 120, 90, 120] : [0, 80],
+      lang: "id",
+      dir: "ltr",
+      timestamp: Date.now(),
       icon: "/assets/icon-192.png",
       badge: "/assets/icon-192.png",
     }),
