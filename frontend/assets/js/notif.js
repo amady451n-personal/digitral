@@ -1,7 +1,7 @@
 // Notifikasi Chrome Android PWA: masa aktif lewat -> bantu peringatan harian.
 // Tidak Web Push (tanpa VAPID), jadi hanya muncul saat PWA aktif & menerima data.
 
-import { dateKey, daysPast } from "./expiry.js";
+import { dateKey, daysPast, hasSeparateGrace, isGraceUrgent } from "./expiry.js";
 import { allNumbers, subscribe } from "./store.js";
 
 const ENABLED_KEY = "digitral:notif:enabled";
@@ -30,12 +30,12 @@ function notifiedKey(id, day) {
   return `digitral:notif:grace20:${id}:${day}`;
 }
 
-async function fire(item, days) {
-  const beyond = days > 20;
-  const title = beyond ? "Masa aktif lewat 20+ hari" : "Masa aktif lewat";
+async function fire(item, days, urgent, graceText) {
+  const title = urgent ? "Masa tenggang hampir habis" : "Masa aktif lewat";
   const tail = String(item.msisdn ?? "").replace(/\D/g, "").slice(-4);
   const base = `${String(item.label ?? "Nomor")} •••• ${tail}: ${days} hari tenggang`;
-  const body = beyond ? `${base} — harus segera diisi` : base;
+  const grace = graceText ? ` (tenggang s/d ${graceText})` : "";
+  const body = urgent ? `${base}${grace} — harus segera diisi` : base;
   const tag = `grace-${item.id}`;
   let reg = null;
   try {
@@ -48,7 +48,7 @@ async function fire(item, days) {
       body,
       tag,
       renotify: false,
-      requireInteraction: beyond,
+      requireInteraction: urgent,
       icon: "/assets/icon-192.png",
       badge: "/assets/icon-192.png",
     });
@@ -83,7 +83,11 @@ export async function checkGraceNotifications(items) {
       continue;
     }
     try {
-      await fire(item, past);
+      const urgent = isGraceUrgent(data.active_until, data.grace_until);
+      const graceText = hasSeparateGrace(data.active_until, data.grace_until)
+        ? String(data.grace_until ?? "").trim()
+        : "";
+      await fire(item, past, urgent, graceText);
     } catch {
       // ignore permission/runtime errors
     }

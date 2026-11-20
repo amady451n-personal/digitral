@@ -7,7 +7,8 @@ Komponen:
 - subscriptions.json: daftar endpoint push per browser (disimpan server).
 - check_and_notify(): dipanggil thread harian di server (jam 08:00 TZ container).
     * active_until == hari ini      -> "Hari ini, masa aktif <provider> <nomor> berakhir"
-    * active_until lewat > 20 hari  -> versi tenggang + "harus segera diisi"
+    * tenggang & grace terpisah     -> "harus segera diisi" mulai 20 hari sebelum grace
+    * tenggang tanpa grace terpisah -> "harus segera diisi" setelah lewat > 20 hari
 
 CLI:
     python3 scripts/push_notify.py --genkey   # selalu generate keypair baru + print
@@ -137,6 +138,17 @@ def _parse_active(value) -> "datetime | None":
     return None
 
 
+def _grace_urgent(active: datetime, grace: "datetime | None", today) -> bool:
+    """Eskalasi 'harus segera diisi'.
+
+    Grace terpisah dari masa aktif -> 20 hari sebelum tanggal grace.
+    Grace kosong/sama dengan masa aktif -> aturan lama (> 20 hari lewat).
+    """
+    if grace is not None and grace.date() != active.date():
+        return (grace.date() - today).days <= GRACE_WARN_DAYS
+    return (today - active.date()).days > GRACE_WARN_DAYS
+
+
 def _fetch_balance(provider: str, msisdn: str) -> "dict | None":
     vault_dir = HOME / provider
     vault = bm.Vault(vault_dir)
@@ -182,14 +194,18 @@ def check_and_notify() -> "list[dict]":
         active = _parse_active(data.get("active_until"))
         if active is None:
             continue
+        grace = _parse_active(data.get("grace_until"))
         label = PROVIDER_LABELS.get(provider, provider)
         days = (active.date() - today).days
         if days == 0:
             body = f"Hari ini, masa aktif {label} {_mask(msisdn)} berakhir"
             tag = f"end-{n.get('id')}"
-        elif -days > GRACE_WARN_DAYS:
-            body = (f"{label} {_mask(msisdn)}: masa aktif lewat {-days} hari (tenggang)"
-                    " — harus segera diisi")
+        elif days < 0 and _grace_urgent(active, grace, today):
+            grace_note = ""
+            if grace is not None and grace.date() != active.date():
+                grace_note = f" s/d {grace.strftime('%d %b %Y')}"
+            body = (f"{label} {_mask(msisdn)}: masa aktif lewat {-days} hari"
+                    f" (tenggang{grace_note}) — harus segera diisi")
             tag = f"grace-{n.get('id')}"
         else:
             continue

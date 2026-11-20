@@ -74,6 +74,29 @@ export function isExpired(value, now = new Date()) {
   return past !== null && past > 0;
 }
 
+const GRACE_WARN_DAYS = 20;
+
+// Grace period dianggap terpisah kalau tanggalnya beda dari masa aktif.
+export function hasSeparateGrace(activeValue, graceValue) {
+  const active = parseActiveDate(activeValue);
+  const grace = parseActiveDate(graceValue);
+  return Boolean(active && grace && grace.getTime() !== active.getTime());
+}
+
+// Eskalasi "harus segera diisi":
+// - grace terpisah -> 20 hari sebelum tanggal grace (termasuk hari-H & setelahnya)
+// - grace kosong/sama dengan masa aktif -> aturan lama: lewat > 20 hari
+export function isGraceUrgent(activeValue, graceValue, now = new Date()) {
+  const past = daysPast(activeValue, now);
+  if (past === null || past <= 0) {
+    return false;
+  }
+  if (hasSeparateGrace(activeValue, graceValue)) {
+    return -daysPast(graceValue, now) <= GRACE_WARN_DAYS;
+  }
+  return past > GRACE_WARN_DAYS;
+}
+
 // Kunci tanggal lokal YYYY-MM-DD (bukan UTC, agar dedup harian tidak geser).
 export function dateKey(now = new Date()) {
   const d = startOfDay(now);
