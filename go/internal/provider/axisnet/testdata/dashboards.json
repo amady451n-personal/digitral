@@ -1,0 +1,93 @@
+{
+ "quota_home_raw": {
+  "status": 200,
+  "data": {
+   "status": true,
+   "status_code": 200,
+   "tracking_firebase": "200-03-10-000-200",
+   "error_message": "",
+   "data": {
+    "total": 2,
+    "summary": {
+     "is_byop": false,
+     "is_gift": false,
+     "total_remaining": 11222908928,
+     "is_unlimited": true,
+     "is_almost_empty": false,
+     "formatted": {
+      "total_remaining": "10.45 GB"
+     }
+    },
+    "packages": [
+     {
+      "id": "B7GheLpKC5c=",
+      "name": "Unlimited Gaming",
+      "masking_name": "",
+      "service_type": "",
+      "icon": "",
+      "package_type": "general",
+      "total_remaining": 0,
+      "percent": 76.6,
+      "remaining_text": "SISA 383.00 MB",
+      "information": "",
+      "play_pause": null,
+      "is_unlimited": true,
+      "is_almost_empty": false,
+      "progress_color": "#6E2C91",
+      "formatted": {
+       "expired": "Berlaku sampai 28 November 2026 23:59"
+      }
+     },
+     {
+      "id": "B7GheLpKC5c=",
+      "name": "BRONET 15GB 28hr",
+      "masking_name": "",
+      "service_type": "",
+      "icon": "",
+      "package_type": "general",
+      "total_remaining": 0,
+      "percent": 67.1875,
+      "remaining_text": "SISA 10.08 GB",
+      "information": "",
+      "play_pause": null,
+      "is_unlimited": false,
+      "is_almost_empty": false,
+      "progress_color": "#6E2C91",
+      "formatted": {
+       "expired": "Berlaku sampai 28 November 2026 23:59"
+      }
+     }
+    ]
+   }
+  }
+ },
+ "balance_raw": {
+  "status": 200,
+  "data": {
+   "status": true,
+   "status_code": 200,
+   "tracking_firebase": "200-03-08-000-200",
+   "error_message": "",
+   "data": {
+    "txid": 26000,
+    "msisdn": "6280000000002",
+    "graceStatus": {
+     "status": "Active",
+     "information": ""
+    },
+    "status": "ACTIVE",
+    "result": {
+     "accounttype": "Prepaid",
+     "accountstate": "",
+     "accountstatus": "",
+     "activestopdate": "Exp on 29 Dec 2026",
+     "suspendstopdate": "Exp on 29 Dec 2026",
+     "disablestopdate": "Exp on 29 Dec 2026",
+     "balance": "0",
+     "pricePlan": "537158",
+     "subcriberID": "223684389"
+    }
+   }
+  }
+ }
+}

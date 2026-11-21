@@ -1,0 +1,24 @@
+{
+ "otp": {
+  "url": "https://otp.api.axis.co.id/v1/otp",
+  "headers": {
+   "Content-Type": "application/json",
+   "Connection": "keep-alive",
+   "X-API-KEY": "ipRsTxOLbgogxEiXj1P73JVWgQk9CEXMSuIsaFO8t6I=",
+   "x-app-version": "11.0.0",
+   "x-signature": "74eeeb454734ce13fe47731d14f851eab1839674cfb05ab5cf77b0a64d287ab6"
+  },
+  "body": "{\"msisdn\":\"CDPENE-rtW8vFYqvx1va8g==\",\"device_type\":\"android\"}"
+ },
+ "login": {
+  "url": "https://otp.api.axis.co.id/otplogin/v2",
+  "headers": {
+   "Content-Type": "application/json",
+   "Connection": "keep-alive",
+   "X-API-KEY": "ipRsTxOLbgogxEiXj1P73JVWgQk9CEXMSuIsaFO8t6I=",
+   "x-app-version": "11.0.0",
+   "x-signature": "211cd62c87da9c7beebcf982e5326092f7bfd6c86bd5250d7f012cb978a9f7bd"
+  },
+  "body": "{\"msisdn\":\"CDPENE-rtW8vFYqvx1va8g==\",\"otp_code\":\"N5NkKmzSJWU=\",\"fcm_token\":\"\",\"fb_id\":\"cece5df9eec47d8433c07be00686c82a\",\"model\":\"SM-A235F\",\"brand\":\"samsung\",\"device_os\":\"31\",\"device_type\":\"android\",\"imei\":\"b3a9c7d5e1f20364\"}"
+ }
+}
