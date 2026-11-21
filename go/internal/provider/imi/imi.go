@@ -160,16 +160,17 @@ func (c *Client) storeSession(msisdn, tok string) {
 	if c.v == nil {
 		return
 	}
-	sessions, _ := c.v.Data["sessions"].(map[string]any)
-	if sessions == nil {
-		sessions = map[string]any{}
-		c.v.Data["sessions"] = sessions
-	}
-	sessions[msisdn] = map[string]any{
-		"token": tok, "exp": cryptoutil.JWTExp(tok),
-		"action": "login", "deviceId": c.dev.ID,
-	}
-	_ = c.v.Save()
+	_ = c.v.Update(func(data map[string]any) {
+		sessions, _ := data["sessions"].(map[string]any)
+		if sessions == nil {
+			sessions = map[string]any{}
+			data["sessions"] = sessions
+		}
+		sessions[msisdn] = map[string]any{
+			"token": tok, "exp": cryptoutil.JWTExp(tok),
+			"action": "login", "deviceId": c.dev.ID,
+		}
+	})
 }
 
 // Dashboard returns the raw /dashboard/get/v7 payload.

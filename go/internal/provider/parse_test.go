@@ -102,3 +102,36 @@ func extractData(t *testing.T, raw []byte) []byte {
 	}
 	return []byte(env.Data)
 }
+
+// The dashboard must stay provider-blind: every provider's Balance JSON has
+// exactly the same key set, even when a field is null.
+func TestAllProvidersShareBalanceKeys(t *testing.T) {
+	var reference map[string]any
+	for _, prov := range []string{"bima", "myim3", "axisnet", "myxl"} {
+		b, err := os.ReadFile("testdata/dashboards/" + prov + ".expected.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var bal Balance
+		if err := json.Unmarshal(b, &bal); err != nil {
+			t.Fatal(err)
+		}
+		// Compare what Go actually emits, not the raw Python fixtures: myXL's
+		// subscription_status is present as null on every other provider too.
+		out, _ := json.Marshal(bal)
+		var keys map[string]any
+		_ = json.Unmarshal(out, &keys)
+		if reference == nil {
+			reference = keys
+			continue
+		}
+		if len(keys) != len(reference) {
+			t.Errorf("%s key count = %d, want %d", prov, len(keys), len(reference))
+		}
+		for k := range reference {
+			if _, ok := keys[k]; !ok {
+				t.Errorf("%s missing key %s", prov, k)
+			}
+		}
+	}
+}

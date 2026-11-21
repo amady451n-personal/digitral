@@ -7,9 +7,11 @@ package vault
 import (
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -170,5 +172,44 @@ func TestSessionBimaShape(t *testing.T) {
 func TestNumAcceptsJSONAndStringForms(t *testing.T) {
 	if num(float64(5)) != 5 || num("7") != 7 || num(nil) != 0 {
 		t.Fatal("num() failed on mixed encodings")
+	}
+}
+
+func TestDropSession(t *testing.T) {
+	v := newTestVault(t, map[string]any{
+		"deviceId": "dev",
+		"sessions": map[string]any{"6281": map[string]any{"token": "t"}},
+	})
+	v.DropSession("6281")
+	if v.RawSession("6281") != nil {
+		t.Fatal("session not dropped in memory")
+	}
+	if reopen(t, v).RawSession("6281") != nil {
+		t.Fatal("session not dropped on disk")
+	}
+}
+
+func TestConcurrentSaves(t *testing.T) {
+	v := newTestVault(t, map[string]any{"deviceId": "dev", "sessions": map[string]any{}})
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			if err := v.Update(func(data map[string]any) {
+				sessions, _ := data["sessions"].(map[string]any)
+				sessions[fmt.Sprintf("628%d", i)] = map[string]any{"token": "t"}
+			}); err != nil {
+				t.Errorf("Save: %v", err)
+			}
+		}(i)
+	}
+	wg.Wait()
+	got, err := Open(v.Dir)
+	if err != nil {
+		t.Fatalf("vault corrupted after concurrent saves: %v", err)
+	}
+	if len(got.SessionMSISDNs()) == 0 {
+		t.Fatal("no sessions survived")
 	}
 }

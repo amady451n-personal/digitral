@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,6 +15,7 @@ import (
 
 	"digitral/backend/internal/provider"
 	"digitral/backend/internal/registry"
+	"digitral/backend/internal/vault"
 )
 
 type stubClient struct{ bal provider.Balance }
@@ -189,5 +191,121 @@ func TestAddNumberSendsOTPWhenNoSession(t *testing.T) {
 	}
 	if _, ok := a.Reg.Pending["axisnet-6281234567890"]; !ok {
 		t.Errorf("pending not created: %#v", a.Reg.Pending)
+	}
+}
+
+type errClient struct{}
+
+func (errClient) Provider() string { return "bima" }
+func (errClient) Balance(context.Context, string) (provider.Balance, error) {
+	return provider.Balance{}, fmt.Errorf("dashboard code 26000: token=eyJhbGciOiJIUzUxMiJ9.SECRET")
+}
+
+type errFactory struct{}
+
+func (errFactory) Client(string, string) (provider.Client, error) { return errClient{}, nil }
+
+func TestStreamCarriesBalanceShape(t *testing.T) {
+	a := newTestAPI(t)
+	srv := httptest.NewServer(a.Handler())
+	defer srv.Close()
+	resp, err := http.Get(srv.URL + "/stream")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	line, err := bufio.NewReader(resp.Body).ReadString('\n')
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload struct {
+		Numbers []map[string]any `json:"numbers"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimPrefix(line, "data: ")), &payload); err != nil {
+		t.Fatal(err)
+	}
+	item := payload.Numbers[0]
+	for _, k := range []string{"ok", "data", "error"} {
+		if _, ok := item[k]; !ok {
+			t.Errorf("stream item missing %s: %#v", k, item)
+		}
+	}
+	if item["ok"] != true {
+		t.Errorf("ok = %v", item["ok"])
+	}
+	data, _ := item["data"].(map[string]any)
+	if data["balance"] != "9400" {
+		t.Errorf("data = %#v", data)
+	}
+}
+
+func TestIncludePending(t *testing.T) {
+	a := newTestAPI(t)
+	a.SessionCheck = func(string, string) bool { return false }
+	a.Factory = stubFactory{c: otpStub{stubClient{}}}
+	h := a.Handler()
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("POST", "/numbers", strings.NewReader(`{"provider":"axisnet","msisdn":"081234567890"}`)))
+	if w.Code != 200 {
+		t.Fatalf("add status = %d", w.Code)
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/numbers?include_pending=1", nil))
+	var out struct {
+		Numbers []map[string]any `json:"numbers"`
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &out)
+	found := false
+	for _, n := range out.Numbers {
+		if n["pending"] == true && n["id"] == "axisnet-6281234567890" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("pending number missing from /numbers: %#v", out.Numbers)
+	}
+}
+
+func TestNoTokenLeakInErrorResponses(t *testing.T) {
+	a := newTestAPI(t)
+	a.Factory = errFactory{}
+	w := httptest.NewRecorder()
+	a.Handler().ServeHTTP(w, httptest.NewRequest("GET", "/numbers/"+a.Reg.Numbers[0].ID+"/balance", nil))
+	body := w.Body.String()
+	if strings.Contains(body, "SECRET") || strings.Contains(body, "eyJhbGciOiJIUzUxMiJ9") {
+		t.Errorf("token leaked to HTTP client: %s", body)
+	}
+}
+
+func TestDeleteDropsVaultSession(t *testing.T) {
+	a := newTestAPI(t)
+	dir := t.TempDir()
+	vaultDir := filepath.Join(dir, "bima")
+	if err := os.MkdirAll(vaultDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(vaultDir, "vault.key"), make([]byte, 32), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	v, err := vault.Open(vaultDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = v.Update(func(data map[string]any) {
+		data["sessions"] = map[string]any{"6280000000000": map[string]any{"token": "t"}}
+	})
+	a.Home = dir
+	n := a.Reg.Numbers[0]
+	w := httptest.NewRecorder()
+	a.Handler().ServeHTTP(w, httptest.NewRequest("DELETE", "/numbers/"+n.ID, nil))
+	if w.Code != 200 {
+		t.Fatalf("delete status = %d", w.Code)
+	}
+	got, err := vault.Open(filepath.Join(dir, "bima"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Session(n.MSISDN) != nil {
+		t.Fatal("session survived DELETE")
 	}
 }

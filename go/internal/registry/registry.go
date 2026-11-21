@@ -123,10 +123,48 @@ func (r *Registry) Remove(id string) error {
 }
 
 func (r *Registry) Find(id string) (Number, bool) {
-	for _, n := range r.Numbers {
+	for _, n := range r.Snapshot() {
 		if n.ID == id {
 			return n, true
 		}
 	}
 	return Number{}, false
+}
+
+// Snapshot returns a copy of the number list for concurrent readers.
+func (r *Registry) Snapshot() []Number {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make([]Number, len(r.Numbers))
+	copy(out, r.Numbers)
+	return out
+}
+
+func (r *Registry) PendingGet(id string) (*Pending, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	p, ok := r.Pending[id]
+	return p, ok
+}
+
+func (r *Registry) PendingSet(id string, p *Pending) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Pending[id] = p
+}
+
+func (r *Registry) PendingDelete(id string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.Pending, id)
+}
+
+func (r *Registry) PendingList() map[string]*Pending {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := make(map[string]*Pending, len(r.Pending))
+	for k, v := range r.Pending {
+		out[k] = v
+	}
+	return out
 }

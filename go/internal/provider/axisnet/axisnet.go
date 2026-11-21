@@ -163,17 +163,18 @@ func (c *Client) ValidateOTP(ctx context.Context, msisdn, otp string) (string, e
 	}
 	c.token = tok
 	if c.v != nil {
-		sessions, _ := c.v.Data["sessions"].(map[string]any)
-		if sessions == nil {
-			sessions = map[string]any{}
-			c.v.Data["sessions"] = sessions
-		}
-		sessions[msisdn] = map[string]any{
-			"provider": "AXISNET", "token": tok,
-			"issued": time.Now().Format("2006-01-02T15:04:05-07"),
-			"scheme": "Bearer", "device": "SM-A235F",
-		}
-		_ = c.v.Save()
+		_ = c.v.Update(func(data map[string]any) {
+			sessions, _ := data["sessions"].(map[string]any)
+			if sessions == nil {
+				sessions = map[string]any{}
+				data["sessions"] = sessions
+			}
+			sessions[msisdn] = map[string]any{
+				"provider": "AXISNET", "token": tok,
+				"issued": time.Now().Format("2006-01-02T15:04:05-07"),
+				"scheme": "Bearer", "device": "SM-A235F",
+			}
+		})
 	}
 	return tok, nil
 }

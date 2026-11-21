@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -74,8 +75,34 @@ func gcmOpen(key, blob []byte) ([]byte, error) {
 	return aead.Open(nil, blob[:ns], blob[ns:], nil)
 }
 
+// saveLocks serialises read-modify-write cycles per vault directory. One
+// process can have many Client snapshots pointed at the same vault.bin.
+var saveLocks sync.Map
+
+func lockFor(dir string) *sync.Mutex {
+	mu, _ := saveLocks.LoadOrStore(dir, &sync.Mutex{})
+	return mu.(*sync.Mutex)
+}
+
 // Save encrypts Data with a fresh IV and replaces vault.bin atomically (0600).
 func (v *Vault) Save() error {
+	mu := lockFor(v.Dir)
+	mu.Lock()
+	defer mu.Unlock()
+	return v.saveLocked()
+}
+
+// Update mutates Data and saves under one lock, so concurrent clients sharing a
+// vault directory cannot interleave a read-modify-write cycle.
+func (v *Vault) Update(fn func(map[string]any)) error {
+	mu := lockFor(v.Dir)
+	mu.Lock()
+	defer mu.Unlock()
+	fn(v.Data)
+	return v.saveLocked()
+}
+
+func (v *Vault) saveLocked() error {
 	plain, err := json.Marshal(v.Data)
 	if err != nil {
 		return err
@@ -94,11 +121,31 @@ func (v *Vault) Save() error {
 	}
 	blob := aead.Seal(iv, iv, plain, nil)
 
-	tmp := filepath.Join(v.Dir, ".vault.bin.tmp")
-	if err := os.WriteFile(tmp, blob, 0o600); err != nil {
+	tmp, err := os.CreateTemp(v.Dir, ".vault-*.tmp")
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, filepath.Join(v.Dir, "vault.bin"))
+	name := tmp.Name()
+	defer os.Remove(name)
+	if err := tmp.Chmod(0o600); err != nil {
+		tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(blob); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(name, filepath.Join(v.Dir, "vault.bin"))
+}
+
+// DropSession removes a number's session, mirroring Vault.drop_session().
+func (v *Vault) DropSession(msisdn string) {
+	sessions, _ := v.Data["sessions"].(map[string]any)
+	delete(sessions, msisdn)
+	_ = v.Save()
 }
 
 func (v *Vault) Str(key string) string {

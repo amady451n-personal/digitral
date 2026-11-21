@@ -233,17 +233,18 @@ func (c *Client) storeSession(msisdn string, tok map[string]any, rt string) {
 	if c.v == nil {
 		return
 	}
-	sessions, _ := c.v.Data["sessions"].(map[string]any)
-	if sessions == nil {
-		sessions = map[string]any{}
-		c.v.Data["sessions"] = sessions
-	}
-	sessions[msisdn] = map[string]any{
-		"token": bearer, "id_token": tok["id_token"], "access_token": tok["access_token"],
-		"refresh_token": rt, "exp": cryptoutil.JWTExp(rt),
-		"token_exp": cryptoutil.JWTExp(fmt.Sprint(tok["access_token"])),
-	}
-	_ = c.v.Save()
+	_ = c.v.Update(func(data map[string]any) {
+		sessions, _ := data["sessions"].(map[string]any)
+		if sessions == nil {
+			sessions = map[string]any{}
+			data["sessions"] = sessions
+		}
+		sessions[msisdn] = map[string]any{
+			"token": bearer, "id_token": tok["id_token"], "access_token": tok["access_token"],
+			"refresh_token": rt, "exp": cryptoutil.JWTExp(rt),
+			"token_exp": cryptoutil.JWTExp(fmt.Sprint(tok["access_token"])),
+		}
+	})
 }
 
 func sessionVal(s map[string]any, key string) any {

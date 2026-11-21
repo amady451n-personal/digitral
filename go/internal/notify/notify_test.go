@@ -76,3 +76,18 @@ func contains(s, sub string) bool {
 	}
 	return false
 }
+
+// Exact shape from commit cf989ce: grace_until different from active_until
+// turns urgent 20 days before grace, not >20 days past active.
+func TestGraceCF989CE(t *testing.T) {
+	active := d("2026-11-20")
+	grace := d("2026-12-10")
+	today := d("2026-11-20") // active ends today, grace is 20 days away
+	if !IsGraceUrgent(active, &grace, today) {
+		t.Fatal("separate grace 20 days out must be urgent (cf989ce)")
+	}
+	same := active
+	if !IsGraceUrgent(active, &same, d("2026-12-11")) {
+		t.Fatal("grace == active uses the legacy >20-days rule (cf989ce)")
+	}
+}

@@ -1,9 +1,11 @@
 package registry
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"sync"
 	"testing"
 )
 
@@ -79,4 +81,24 @@ func fixtureDir(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return dir
+}
+
+func TestConcurrentRegistryAccess(t *testing.T) {
+	r, _ := Load(t.TempDir())
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			id := fmt.Sprintf("bima-%d", i)
+			r.PendingSet(id, &Pending{Provider: "bima"})
+			_, _ = r.PendingGet(id)
+			_ = r.Snapshot()
+			r.PendingDelete(id)
+		}(i)
+	}
+	wg.Wait()
+	if len(r.PendingList()) != 0 {
+		t.Fatal("pending map not empty")
+	}
 }

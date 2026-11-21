@@ -2,6 +2,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -169,7 +170,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func (a *API) numbersView() []map[string]any {
 	out := []map[string]any{}
-	for _, n := range a.Reg.Numbers {
+	for _, n := range a.Reg.Snapshot() {
 		p, ok := info(n.Provider)
 		if !ok {
 			p = ProviderInfo{ID: n.Provider, Label: n.Provider}
@@ -184,7 +185,18 @@ func (a *API) numbersView() []map[string]any {
 }
 
 func (a *API) listNumbers(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, 200, map[string]any{"numbers": a.numbersView()})
+	out := a.numbersView()
+	if r.URL.Query().Get("include_pending") != "" {
+		for id, p := range a.Reg.PendingList() {
+			info, _ := info(p.Provider)
+			out = append(out, map[string]any{
+				"id": id, "provider": p.Provider, "label": info.Label,
+				"msisdn": p.MSISDN, "added_at": float64(p.CreatedAt.Unix()),
+				"pending": true, "color": info.Color, "logo": info.Logo,
+			})
+		}
+	}
+	writeJSON(w, 200, map[string]any{"numbers": out})
 }
 
 func (a *API) addNumber(w http.ResponseWriter, r *http.Request) {
@@ -203,7 +215,7 @@ func (a *API) addNumber(w http.ResponseWriter, r *http.Request) {
 	}
 	ms := registry.Normalize(body.MSISDN)
 	if err := a.Reg.Add(body.Provider, ms); err != nil {
-		http.Error(w, err.Error(), 409)
+		http.Error(w, safeError(err), 409)
 		return
 	}
 	hasSession := a.SessionCheck != nil && a.SessionCheck(body.Provider, ms)
@@ -218,16 +230,16 @@ func (a *API) addNumber(w http.ResponseWriter, r *http.Request) {
 	// An explicit POST /numbers is the user's request to send OTP.
 	client, err := a.Factory.Client(body.Provider, ms)
 	if err != nil {
-		http.Error(w, err.Error(), 502)
+		http.Error(w, safeError(err), 502)
 		return
 	}
 	transid, err := sendOTP(r.Context(), client, ms)
 	if err != nil {
-		http.Error(w, err.Error(), 502)
+		http.Error(w, safeError(err), 502)
 		return
 	}
 	id := body.Provider + "-" + ms
-	a.Reg.Pending[id] = &registry.Pending{Provider: body.Provider, MSISDN: ms, TransID: transid, CreatedAt: time.Now()}
+	a.Reg.PendingSet(id, &registry.Pending{Provider: body.Provider, MSISDN: ms, TransID: transid, CreatedAt: time.Now()})
 	writeJSON(w, 200, map[string]any{
 		"id": id, "msisdn": ms, "provider": body.Provider,
 		"label": p.Label, "color": p.Color, "logo": p.Logo,
@@ -237,19 +249,19 @@ func (a *API) addNumber(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) resend(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	pending, ok := a.Reg.Pending[id]
+	pending, ok := a.Reg.PendingGet(id)
 	if !ok {
 		http.Error(w, "no pending OTP for this number (re-add)", 400)
 		return
 	}
 	client, err := a.Factory.Client(pending.Provider, pending.MSISDN)
 	if err != nil {
-		http.Error(w, err.Error(), 502)
+		http.Error(w, safeError(err), 502)
 		return
 	}
 	transid, err := sendOTP(r.Context(), client, pending.MSISDN)
 	if err != nil {
-		http.Error(w, err.Error(), 502)
+		http.Error(w, safeError(err), 502)
 		return
 	}
 	pending.TransID = transid
@@ -264,7 +276,7 @@ func (a *API) resend(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) verify(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	pending, ok := a.Reg.Pending[id]
+	pending, ok := a.Reg.PendingGet(id)
 	if !ok {
 		http.Error(w, "no pending OTP for this number", 400)
 		return
@@ -278,18 +290,18 @@ func (a *API) verify(w http.ResponseWriter, r *http.Request) {
 	}
 	client, err := a.Factory.Client(pending.Provider, pending.MSISDN)
 	if err != nil {
-		http.Error(w, err.Error(), 400)
+		http.Error(w, safeError(err), 400)
 		return
 	}
 	if _, err := validateOTP(r.Context(), client, pending.MSISDN, pending.TransID, body.OTP); err != nil {
-		http.Error(w, err.Error(), 400)
+		http.Error(w, safeError(err), 400)
 		return
 	}
 	if err := a.Reg.Add(pending.Provider, pending.MSISDN); err != nil && !strings.Contains(err.Error(), "already registered") {
-		http.Error(w, err.Error(), 400)
+		http.Error(w, safeError(err), 400)
 		return
 	}
-	delete(a.Reg.Pending, id)
+	a.Reg.PendingDelete(id)
 	writeJSON(w, 200, map[string]any{"ok": true, "id": id, "status": "verified"})
 }
 
@@ -302,12 +314,12 @@ func (a *API) balance(w http.ResponseWriter, r *http.Request) {
 	}
 	client, err := a.Factory.Client(n.Provider, n.MSISDN)
 	if err != nil {
-		http.Error(w, err.Error(), 502)
+		http.Error(w, safeError(err), 502)
 		return
 	}
 	bal, err := client.Balance(r.Context(), n.MSISDN)
 	if err != nil {
-		http.Error(w, err.Error(), 502)
+		http.Error(w, safeError(err), 502)
 		return
 	}
 	p, _ := info(n.Provider)
@@ -319,13 +331,21 @@ func (a *API) balance(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) deleteNumber(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if _, ok := a.Reg.Find(id); ok {
-		_ = a.Reg.Remove(id)
-	} else if _, ok := a.Reg.Pending[id]; !ok {
+	n, registered := a.Reg.Find(id)
+	pending, pendingOK := a.Reg.PendingGet(id)
+	if !registered && !pendingOK {
 		http.Error(w, "number not found", 404)
 		return
 	}
-	delete(a.Reg.Pending, id)
+	if registered {
+		if v, err := vault.Open(filepath.Join(a.Home, n.Provider)); err == nil {
+			v.DropSession(n.MSISDN)
+		}
+		_ = a.Reg.Remove(id)
+	} else if v, err := vault.Open(filepath.Join(a.Home, pending.Provider)); err == nil {
+		v.DropSession(pending.MSISDN)
+	}
+	a.Reg.PendingDelete(id)
 	writeJSON(w, 200, map[string]any{"ok": true})
 }
 
@@ -343,12 +363,57 @@ func (a *API) stream(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		case <-ticker.C:
-			payload := map[string]any{"numbers": a.numbersView(), "ts": time.Now().Unix()}
+			payload := map[string]any{"numbers": a.snapshot(), "ts": time.Now().Unix()}
 			b, _ := json.Marshal(payload)
 			_, _ = fmt.Fprintf(w, "data: %s\n\n", b)
 			flusher.Flush()
 		}
 	}
+}
+
+// snapshot mirrors server.py:_snapshot(): SSE items must carry ok/data/error
+// or the unchanged frontend clears balances it already fetched.
+func (a *API) snapshot() []map[string]any {
+	out := []map[string]any{}
+	for _, n := range a.Reg.Snapshot() {
+		info, _ := info(n.Provider)
+		item := map[string]any{
+			"id": n.ID, "provider": n.Provider, "label": info.Label,
+			"msisdn": n.MSISDN, "added_at": n.AddedAt,
+			"ok": false, "data": nil, "error": nil,
+			"color": info.Color, "logo": info.Logo,
+		}
+		hasSession := a.SessionCheck != nil && a.SessionCheck(n.Provider, n.MSISDN)
+		if !hasSession {
+			item["error"] = "no_session"
+			out = append(out, item)
+			continue
+		}
+		client, err := a.Factory.Client(n.Provider, n.MSISDN)
+		if err != nil {
+			item["error"] = "client_error"
+			out = append(out, item)
+			continue
+		}
+		bal, err := client.Balance(context.Background(), n.MSISDN)
+		if err != nil {
+			item["error"] = "balance_failed"
+		} else {
+			item["ok"] = true
+			item["data"] = bal
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+// safeError never forwards provider response bodies (which can contain tokens)
+// to the browser. Details are not logged either, so stderr stays clean.
+func safeError(err error) string {
+	if err == nil {
+		return "request failed"
+	}
+	return "request failed"
 }
 
 func (a *API) poll() time.Duration {

@@ -26,7 +26,7 @@ type Balance struct {
 	Bonstri       any            `json:"bonstri"`
 
 	// SubscriptionStatus is myXL-only; other providers leave it unset.
-	SubscriptionStatus any `json:"subscription_status,omitempty"`
+	SubscriptionStatus any `json:"subscription_status"`
 }
 
 // Client is implemented by imi (bima+/myIM3), axisnet and myXL.
