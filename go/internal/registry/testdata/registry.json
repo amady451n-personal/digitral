@@ -1,0 +1,34 @@
+{
+ "numbers": [
+  {
+   "id": "bima-6280000000000",
+   "provider": "bima",
+   "msisdn": "6280000000000",
+   "added_at": 1700000000
+  },
+  {
+   "id": "myim3-6280000000000",
+   "provider": "myim3",
+   "msisdn": "6280000000000",
+   "added_at": 1700000000
+  },
+  {
+   "id": "myim3-6280000000000",
+   "provider": "myim3",
+   "msisdn": "6280000000000",
+   "added_at": 1700000000
+  },
+  {
+   "id": "axisnet-6280000000000",
+   "provider": "axisnet",
+   "msisdn": "6280000000000",
+   "added_at": 1700000000
+  },
+  {
+   "id": "myxl-6280000000000",
+   "provider": "myxl",
+   "msisdn": "6280000000000",
+   "added_at": 1700000000
+  }
+ ]
+}
