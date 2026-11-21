@@ -24,6 +24,9 @@ type Balance struct {
 	GraceUntil    any            `json:"grace_until"`
 	PackageQuotas []PackageQuota `json:"package_quotas"`
 	Bonstri       any            `json:"bonstri"`
+
+	// SubscriptionStatus is myXL-only; other providers leave it unset.
+	SubscriptionStatus any `json:"subscription_status,omitempty"`
 }
 
 // Client is implemented by imi (bima+/myIM3), axisnet and myXL.
