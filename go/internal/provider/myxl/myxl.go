@@ -182,7 +182,7 @@ func (c *Client) refresh(ctx context.Context, msisdn string) error {
 		return fmt.Errorf("no refresh_token")
 	}
 	body := url.Values{"grant_type": {"refresh_token"}, "refresh_token": {rt}}
-	tok, err := c.tokenGrant(ctx, body.Encode())
+	tok, err := c.tokenGrant(ctx, body.Encode(), msisdn)
 	if err != nil {
 		return err
 	}
@@ -190,14 +190,29 @@ func (c *Client) refresh(ctx context.Context, msisdn string) error {
 	return nil
 }
 
-func (c *Client) tokenGrant(ctx context.Context, form string) (map[string]any, error) {
+func (c *Client) tokenGrant(ctx context.Context, form, msisdn string) (map[string]any, error) {
 	req, err := http.NewRequestWithContext(ctx, "POST", c.ciamBase+"realms/xl-ciam/protocol/openid-connect/token", strings.NewReader(form))
 	if err != nil {
 		return nil, err
 	}
-	req.Header["Authorization"] = []string{basicAuth()}
-	req.Header["Content-Type"] = []string{"application/x-www-form-urlencoded"}
-	req.Header["User-Agent"] = []string{ciamUA}
+	fp, _ := fingerprint(msisdn)
+	// CIAM binds a refresh_token to the client context used at issuance. The
+	// Python client sends this whole device header set on every token grant;
+	// dropping it yields "User Agent mismatch during token refresh".
+	for k, v := range map[string]string{
+		"Authorization":           basicAuth(),
+		"Accept":                  "application/json",
+		"Content-Type":            "application/x-www-form-urlencoded",
+		"User-Agent":              ciamUA,
+		"ax-request-at":           time.Now().Format("2006-01-02T15:04:05.000-0700"),
+		"ax-device-id":            c.v.DeviceID(),
+		"ax-request-id":           newID(),
+		"ax-request-device":       "Xiaomi",
+		"ax-request-device-model": "M2101K7AG",
+		"ax-fingerprint":          fp,
+	} {
+		req.Header[k] = []string{v}
+	}
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, err

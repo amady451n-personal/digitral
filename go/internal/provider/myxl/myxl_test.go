@@ -104,9 +104,11 @@ func TestMyXLRefreshPath(t *testing.T) {
 	}
 
 	refreshed := 0
+	var grantHeaders http.Header
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.Contains(r.URL.Path, "protocol/openid-connect/token"):
+			grantHeaders = r.Header.Clone()
 			_ = r.ParseForm()
 			if r.Form.Get("grant_type") != "refresh_token" {
 				t.Errorf("grant_type = %q", r.Form.Get("grant_type"))
@@ -136,6 +138,7 @@ func TestMyXLRefreshPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	v.Data["deviceId"] = "01b2f3d4232e473e"
 	v.Data["sessions"] = map[string]any{
 		"6287777313358": map[string]any{
 			"token": "old", "refresh_token": "rt", "exp": float64(1000000000),
@@ -150,6 +153,20 @@ func TestMyXLRefreshPath(t *testing.T) {
 	}
 	if refreshed != 1 {
 		t.Errorf("refresh grant called %d times, want 1", refreshed)
+	}
+	// CIAM binds the refresh token to the original client context. Omitting
+	// these headers produced "User Agent mismatch during token refresh".
+	for _, k := range []string{"Accept", "ax-request-at", "ax-device-id", "ax-request-id",
+		"ax-request-device", "ax-request-device-model", "ax-fingerprint"} {
+		if grantHeaders.Get(k) == "" {
+			t.Errorf("refresh grant missing header %s", k)
+		}
+	}
+	if got := grantHeaders.Get("User-Agent"); got != "okhttp/4.12.0" {
+		t.Errorf("User-Agent = %q, want okhttp/4.12.0", got)
+	}
+	if got := grantHeaders.Get("ax-device-id"); got != "01b2f3d4232e473e" {
+		t.Errorf("ax-device-id = %q", got)
 	}
 	if c.token == "old" || c.token == "" {
 		t.Errorf("token after refresh = %q", c.token)
