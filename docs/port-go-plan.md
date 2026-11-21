@@ -244,3 +244,22 @@ Setiap package punya `*_test.go` di sebelahnya. Data uji: `internal/*/testdata/*
 3. **Type consistency:** `provider.Balance`/`PackageQuota`/`Client` didefinisikan di Task 2 dan dipakai 3–6; `vault.Session/RawSession` di Task 1 dipakai 3–5.
 4. **Review focus:** 5 item punya test (Task 2, 3, 4, 1/6, 6).
 5. **Proportion:** rencana ~2× spec, bukan transkrip; body kode hanya pada tanda tangan dan nilai yang dikunci.
+
+## Hasil gate RAM (2026-11-21)
+
+Diukur dengan image `digitral-backend:latest` (scratch), volume salinan
+`/tmp/opencode/data-copy` berisi registry 5 nomor + vault 4 provider,
+`POLL_SEC=1`, kontainer uji terpisah (`digitral-go-test`, port 8767):
+
+| Skenario | RSS | CPU | Hasil |
+|---|---|---|---|
+| Idle 2 menit | **2.52 MiB** | 0.00% | lolos |
+| 20 klien SSE + 60 request `/numbers` | **4.72 MiB** | 0.59% | lolos |
+| Sesudah beban | **6.12 MiB** | 0.04% | lolos |
+
+Gate ≤ 30 MB **lolos dengan margin besar**. Perbandingan image:
+`digitral-backend:latest` 8.44 MB vs `digitral-python:latest` 242 MB.
+Keputusan: lanjut dengan Go; Rust tidak diperlukan untuk target RAM ini.
+
+Catatan: pengukuran memakai container uji yang dihapus setelahnya; service
+`digitral-dashboard` yang lama tidak disentuh.
