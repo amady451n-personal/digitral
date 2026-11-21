@@ -11,7 +11,11 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
+
+	"digitral/backend/internal/vault"
 )
 
 type providerShape struct {
@@ -47,18 +51,17 @@ func runVaultScan(base string) {
 		if _, err := os.Stat(filepath.Join(dir, "vault.key")); err != nil {
 			continue
 		}
-		v, err := OpenVault(dir)
+		v, err := vault.Open(dir)
 		if err != nil {
 			fmt.Printf("%-8s OPEN ERR: %v\n", name, err)
 			fail++
 			continue
 		}
 		fmt.Printf("%-8s deviceId=%s… faaid=%v gaid=%v profile=%v sessions=%d\n",
-			name, trunc(v.DeviceID(), 6), v.Faaid() != "", v.Gaid() != "", v.DeviceProfile() != nil, v.sessionCount())
+			name, trunc(v.DeviceID(), 6), v.Faaid() != "", v.Gaid() != "", v.DeviceProfile() != nil, len(v.SessionMSISDNs()))
 
 		for _, ms := range v.SessionMSISDNs() {
 			raw := v.RawSession(ms)
-			keys := sortedKeys(raw)
 			state := "no-exp"
 			switch {
 			case raw["exp"] != nil && num(raw["exp"]) > 0:
@@ -68,12 +71,11 @@ func runVaultScan(base string) {
 					state = "expired(exp)"
 				}
 			case raw["token_exp"] != nil:
-				state = fmt.Sprintf("access_exp_left=%.1fd", (num(raw["token_exp"])-nowUnix())/86400)
+				state = fmt.Sprintf("access_exp_left=%.1fd", (num(raw["token_exp"])-float64(nowUnix()))/86400)
 			case raw["issued"] != nil:
 				state = "issued=" + fmt.Sprint(raw["issued"])
 			}
-			fmt.Printf("         %s keys=[%s] state=%s raw_available=%v\n",
-				mask(ms), strings.Join(keys, " "), state, v.RawSession(ms) != nil)
+			fmt.Printf("         %s keys=[%s] state=%s\n", mask(ms), strings.Join(sortedKeys(raw), " "), state)
 		}
 
 		if want, ok := providerShapes[name]; ok {
@@ -93,8 +95,25 @@ func runVaultScan(base string) {
 	}
 }
 
+func num(v any) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case int:
+		return float64(n)
+	case int64:
+		return float64(n)
+	case string:
+		f, _ := strconv.ParseFloat(strings.TrimSpace(n), 64)
+		return f
+	}
+	return 0
+}
+
+func nowUnix() int64 { return time.Now().Unix() }
+
 // checkShape compares every stored session against the documented provider shape.
-func checkShape(v *Vault, want providerShape) (string, bool) {
+func checkShape(v *vault.Vault, want providerShape) (string, bool) {
 	wantKeys := strings.Fields(want.sessionKeys)
 	for _, ms := range v.SessionMSISDNs() {
 		got := sortedKeys(v.RawSession(ms))

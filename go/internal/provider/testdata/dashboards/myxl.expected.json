@@ -1,0 +1,18 @@
+{
+ "balance": 184065,
+ "quota": 31981572,
+ "unit": "KB",
+ "used": 31981572,
+ "unlimited": false,
+ "active_until": "29 Oct 2026",
+ "grace_until": "26 Feb 2027",
+ "package_quotas": [
+  {
+   "name": "24jam di Semua Jaringan",
+   "remaining": "0 MB",
+   "unit": ""
+  }
+ ],
+ "bonstri": null,
+ "subscription_status": "GRACE"
+}

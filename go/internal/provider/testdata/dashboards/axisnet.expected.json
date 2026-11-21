@@ -1,0 +1,22 @@
+{
+ "balance": "0",
+ "quota": "10.45 GB",
+ "unit": "",
+ "used": null,
+ "unlimited": true,
+ "active_until": "29 Dec 2026",
+ "grace_until": "29 Dec 2026",
+ "package_quotas": [
+  {
+   "name": "Unlimited Gaming",
+   "remaining": "383.00 MB (UNLIMITED)",
+   "unit": ""
+  },
+  {
+   "name": "BRONET 15GB 28hr",
+   "remaining": "10321.92 MB",
+   "unit": ""
+  }
+ ],
+ "bonstri": null
+}

@@ -1,0 +1,17 @@
+{
+ "balance": "129",
+ "quota": 150528,
+ "unit": "KB",
+ "used": null,
+ "unlimited": false,
+ "active_until": "17 Dec 2026",
+ "grace_until": "16 Jan 2027",
+ "package_quotas": [
+  {
+   "name": "Bonus Kuota",
+   "remaining": "147 MB",
+   "unit": ""
+  }
+ ],
+ "bonstri": null
+}

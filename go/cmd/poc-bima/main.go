@@ -1,23 +1,22 @@
-// POC: bima+ balance flow in Go.
+// Command poc-bima is the live-verification CLI for the Go port. It is not part
+// of the backend; it exists so provider work can be checked against real
+// sessions without shipping a test that touches the network.
 //
 // Modes:
 //
 //	POC_VAULT=<dir> POC_MSISDN=<62...>   open an existing vault, reuse its session,
 //	                                     call /dashboard/get/v7, print parsed balance
+//	POC_VAULT_SCAN=<base>                inspect every provider vault under a dir
 //	POC_PROBE=validate|dashboard         guest token then a post-auth endpoint (no OTP)
 //	POC_TLS=stdlib                       transport control run
 //	POC_ALPN=h1                          uTLS variant with ALPN stripped (HTTP/1.1)
-//
-// Default (no env): guest token over uTLS, i.e. the TLS assumption spike.
 package main
 
 import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/sha512"
 	"crypto/tls"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -27,6 +26,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"digitral/backend/internal/cryptoutil"
+	"digitral/backend/internal/vault"
 
 	utls "github.com/refraction-networking/utls"
 	"golang.org/x/net/http2"
@@ -62,9 +64,9 @@ func defaultDevice() Device {
 //
 // Parity note: Python BimaClient only reads device_id/faaid/gaid from the vault;
 // device_name/oem/model/osver always fall back to generic/samsung/SM-A235F/14
-// because server.py never passes them. Mirroring that is the safe default.
-// POC_DEVICE_PROFILE=1 opts into the stored real-device profile instead.
-func deviceFromVault(v *Vault, useProfile bool) Device {
+// because server.py never passes them. POC_DEVICE_PROFILE=1 opts into the
+// stored real-device profile instead.
+func deviceFromVault(v *vault.Vault, useProfile bool) Device {
 	d := defaultDevice()
 	if s := v.DeviceID(); s != "" {
 		d.ID = s
@@ -79,20 +81,6 @@ func deviceFromVault(v *Vault, useProfile bool) Device {
 		d.Name, d.OEM, d.Model, d.OSVer = v.DeviceName(), v.OEM(), v.Model(), v.OSVer()
 	}
 	return d
-}
-
-func sha512Hex(s string) string {
-	h := sha512.Sum512([]byte(s))
-	return hex.EncodeToString(h[:])
-}
-
-// getValues mirrors MixUpValues.getValues: every other byte, 1-based odd positions.
-func getValues(s string) string {
-	var b strings.Builder
-	for i := 0; i < len(s); i += 2 {
-		b.WriteByte(s[i])
-	}
-	return b.String()
 }
 
 // buildHeaders mirrors BimaClient.baseline + build_headers (parent line, no child).
@@ -130,15 +118,14 @@ func buildHeaders(dev Device, path, body string, reqTime int64, token string) []
 		h = append(h, [2]string{"X-ESIM-SUPPORT", "false"})
 	}
 	h = append(h, [2]string{"X-IMI-HASH",
-		sha512Hex("parent" + secret + appOS + secret + appVersion + secret + tokenID + "&SALT=" + getValues(rt))})
+		cryptoutil.SHA512Hex("parent" + secret + appOS + secret + appVersion + secret + tokenID + "&SALT=" + cryptoutil.GetValues(rt))})
 	h = append(h, [2]string{"x-imi-oauth",
-		sha512Hex("REQBODY=" + body + "&SALT=" + getValues(strings.TrimSpace(tokenID)))})
+		cryptoutil.SHA512Hex("REQBODY=" + body + "&SALT=" + cryptoutil.GetValues(strings.TrimSpace(tokenID)))})
 	return h
 }
 
 // --- transports ---------------------------------------------------------------
 
-// dialUTLS opens a TCP conn and performs a uTLS Chrome handshake on it.
 func dialUTLS(ctx context.Context, addr string, h1Only bool) (net.Conn, error) {
 	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
@@ -177,7 +164,6 @@ func dialUTLS(ctx context.Context, addr string, h1Only bool) (net.Conn, error) {
 	return uc, nil
 }
 
-// httpClient returns the transport for a request. stdlib is the default; utls is opt-in.
 func httpClient(useUTLS, h1Only bool) (*http.Client, string) {
 	if !useUTLS {
 		tr := &http.Transport{ForceAttemptHTTP2: true}
@@ -211,8 +197,6 @@ func post(dev Device, path, body, token string, useUTLS, h1Only bool) (int, stri
 	if err != nil {
 		return 0, "", "", err
 	}
-	// Assign directly so header name casing matches the Python client byte-for-byte
-	// on the HTTP/1.1 path (h2 lowercases names by protocol).
 	for _, kv := range buildHeaders(dev, path, body, reqTime, token) {
 		req.Header[kv[0]] = []string{kv[1]}
 	}
@@ -243,19 +227,15 @@ func post(dev Device, path, body, token string, useUTLS, h1Only bool) (int, stri
 }
 
 func main() {
-	// --- cross-provider vault scan ----------------------------------------------
 	if base := os.Getenv("POC_VAULT_SCAN"); base != "" {
 		runVaultScan(base)
 		return
 	}
-
-	// --- existing-vault mode: full balance read, no OTP -------------------------
 	if dir := os.Getenv("POC_VAULT"); dir != "" {
 		runVaultMode(dir)
 		return
 	}
 
-	// --- probe mode: guest token then a post-auth endpoint ----------------------
 	if probe := os.Getenv("POC_PROBE"); probe != "" {
 		path, body := "/otp/validate/v2", "{}"
 		if probe == "dashboard" {
@@ -289,11 +269,9 @@ func main() {
 		return
 	}
 
-	// --- TLS spike default: guest token over uTLS -------------------------------
 	useUTLS := os.Getenv("POC_TLS") != "stdlib"
 	h1Only := os.Getenv("POC_ALPN") == "h1"
-	path := "/token/guest/v1"
-	status, text, proto, err := post(defaultDevice(), path, "{}", "", useUTLS, h1Only)
+	status, text, proto, err := post(defaultDevice(), "/token/guest/v1", "{}", "", useUTLS, h1Only)
 	if err != nil {
 		fmt.Println("PROTO:", proto)
 		fmt.Println("ERR:", err)
