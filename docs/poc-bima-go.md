@@ -265,3 +265,14 @@ go get github.com/refraction-networking/utls
 
 Tidak ada dependensi eksternal selain utls (TLS fingerprint).
 Storage: stdlib (`crypto/aes`, `crypto/sha512`, `crypto/cipher`, `encoding/json`).
+
+## Status akhir (2026-11-21)
+
+POC berhasil dan sudah dipindah ke backend Go produksi:
+
+- `poc/bima/` dihapus; CLI verifikasi hidup di `go/cmd/poc-bima`.
+- `go/internal/cryptoutil`, `vault`, `provider/{imi,axisnet,myxl}`, `httpapi`,
+  `push`, `notify` menggantikan `server.py` + modul Python.
+- Semua test: `cd go && go test ./...` hijau.
+- Image `digitral-backend:latest` (scratch, 8,44 MB) lolos gate RAM ≤30 MB.
+- Rencana lengkap + hasil ukur: `docs/port-go-plan.md`.

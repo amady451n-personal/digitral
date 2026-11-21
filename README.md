@@ -1,7 +1,33 @@
 # Digitral multi-number dashboard
 
-Backend (FastAPI) + frontend (vanilla JS) yang menggabungkan nomor bima+ (Tri) dan
-myIM3 (Indosat) di satu dashboard, dengan polling real-time (SSE).
+Backend (Go, menggantikan FastAPI) + frontend (vanilla JS) yang menggabungkan
+nomor bima+, myIM3, AXISNET, dan myXL di satu dashboard, dengan polling real-time
+(SSE) dan notifikasi Web Push.
+
+## Backend Go
+
+```bash
+cd go && go test ./...                 # semua test golden + kontrak + grace
+cd go && go build ./cmd/digitrald      # binary tunggal
+# image: docker build -f go/Dockerfile -t digitral-backend:latest .
+```
+
+Status port: selesai untuk keempat provider, vault/registry kompatibel Python,
+gate RAM lolos (2,5–6,1 MiB; detail di `docs/port-go-plan.md`).
+
+Rollback: image Python lama masih tersimpan sebagai `digitral-python:latest` dan
+`Dockerfile` root masih utuh. Untuk kembali, kembalikan `build: .` /
+`image: digitral-dashboard:latest` di `docker-compose.yml` lalu
+`docker compose up -d --build`. Format `vault.*` dan `registry.json` tidak
+berubah, jadi data tetap terbaca kedua backend.
+
+Perintah manual untuk verifikasi tanpa mengirim OTP:
+
+```bash
+cd go
+POC_VAULT_SCAN=/tmp/opencode/vault-frontend-copy go run ./cmd/poc-bima
+POC_VAULT=/tmp/opencode/vault-bima-copy go run ./cmd/poc-bima
+```
 
 ## Jalankan (Docker Compose)
 
