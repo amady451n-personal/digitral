@@ -1,0 +1,35 @@
+# Target device (ARM64 STB with little free RAM): never build on the device.
+# Load the prebuilt image with `docker load -i digitral-arm64.tar`, then:
+#   docker compose -f docker-compose.device.yml up -d
+#
+# `pull_policy: never` makes Compose refuse to pull or rebuild; it only uses
+# the local image. GOMEMLIMIT/GOGC keep the Go heap small on constrained RAM.
+services:
+  digitral:
+    image: digitral-backend:arm64
+    pull_policy: never
+    container_name: digitral-dashboard
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-8765}:8765"
+    environment:
+      FRONTEND_HOME: /app/data
+      POLL_SEC: "60"
+      TZ: ${TZ:-Asia/Jakarta}
+      GOMEMLIMIT: 32MiB
+      GOGC: "50"
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_MAILTO: ${VAPID_MAILTO:-mailto:kamaya021@gmail.com}
+    volumes:
+      - digitral_data:/app/data
+    healthcheck:
+      test: ["CMD", "/digitrald", "-healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  digitral_data:
+    name: digitral_data

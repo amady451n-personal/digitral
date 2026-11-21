@@ -1,11 +1,16 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.26-alpine AS build
+# Build on the builder's native platform. TARGETARCH comes from buildx, so an
+# arm64 image is cross-compiled without QEMU and without a Go toolchain on the
+# target STB, which only loads the small runtime layer.
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /src
 COPY go/go.mod go/go.sum ./
 RUN go mod download
 COPY go/ ./
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/digitrald ./cmd/digitrald
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/digitrald ./cmd/digitrald
 
 FROM scratch
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/

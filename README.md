@@ -77,3 +77,24 @@ python3 scripts/myim3_balance.py <62xxxxxxxxxx> --action register
   Frontend hanya boleh mengirim nomor yang user login-nya miliki.
 - CORS terbuka di sample; batasi ke origin frontend di produksi.
 - Konstanta myXL/axisnet belum diverifikasi (slot `None` di `PROVIDERS`).
+## Deploy ke perangkat ARM64 RAM rendah (STB 680HG)
+
+Jangan build di perangkat. Build di mesin lain yang punya RAM cukup, lalu
+pindahkan image yang sudah jadi:
+
+```bash
+# di mesin build (x86_64)
+docker buildx build --platform linux/arm64 -f go/Dockerfile \
+  -t digitral-backend:arm64 --load .
+docker save digitral-backend:arm64 -o digitral-arm64.tar
+scp digitral-arm64.tar user@stb:/tmp/
+
+# di STB (tidak ada compiler Go, tidak ada build)
+docker load -i /tmp/digitral-arm64.tar
+docker compose -f docker-compose.device.yml up -d
+docker stats --no-stream digitral-dashboard
+```
+
+`docker-compose.device.yml` memakai `pull_policy: never` (tidak pull/build) dan
+membatasi heap Go lewat `GOMEMLIMIT=32MiB` + `GOGC=50`. Volume `digitral_data`
+dan env tetap sama seperti compose utama, jadi data tidak perlu dipindah.
