@@ -11,3 +11,6 @@ __pycache__/
 frontendold/
 # secrets: VAPID keys & env docker-compose
 .env
+
+# artefak deploy ARM64 (dihasilkan startgo.sh)
+dist/
