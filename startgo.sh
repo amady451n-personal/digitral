@@ -68,7 +68,7 @@ build_here() {
 
 >> Salin ke STB (ganti user@stb):
 
-   scp "$SCRIPT_DIR/startgo.sh" "$SCRIPT_DIR/$DEVICE_COMPOSE" "$ARTIFACT" user@stb:/tmp/
+   scp "$SCRIPT_DIR/startgo.sh" "$SCRIPT_DIR/$DEVICE_COMPOSE" "$ARTIFACT" root@192.168.8.200:/tmp/
 
 >> Di STB:
 
