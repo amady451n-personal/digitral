@@ -160,6 +160,40 @@ func TestBalanceUsesStoredSession(t *testing.T) {
 	}
 }
 
+func TestBalanceRetriesEmptyDashboard(t *testing.T) {
+	empty := []byte(`{"status":"0","code":"26000","message":"success","data":{"bonstriDetails":{"totalPoints":"1128"}}}`)
+	raw, err := os.ReadFile("../testdata/dashboards/bima.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("Content-Type", "application/json")
+		if calls == 1 {
+			_, _ = w.Write(empty)
+			return
+		}
+		_, _ = w.Write(raw)
+	}))
+	defer s.Close()
+	v := newVault(t)
+	v.Data["sessions"] = map[string]any{
+		"628123456789": map[string]any{"token": "stored-token", "exp": float64(4102444800)},
+	}
+	c := New(cfgAt(s, ConfigBima), v, DefaultDevice(), s.Client().Transport)
+	bal, err := c.Balance(context.Background(), "628123456789")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls != 2 {
+		t.Errorf("dashboard calls = %d, want 2 (empty then retry)", calls)
+	}
+	if bal.Quota == nil {
+		t.Errorf("balance after retry = %#v, want populated", bal)
+	}
+}
+
 func TestBalanceWithoutSessionDoesNotSendOTP(t *testing.T) {
 	called := false
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

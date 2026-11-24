@@ -188,11 +188,31 @@ func (c *Client) Balance(ctx context.Context, msisdn string) (provider.Balance, 
 	if c.token == "" {
 		return provider.Balance{}, fmt.Errorf("no saved session for %s; OTP required", msisdn)
 	}
-	b, err := c.Dashboard(ctx)
-	if err != nil {
-		return provider.Balance{}, err
+	// bima+/myIM3 occasionally answer /dashboard/get/v7 with a success envelope
+	// that carries only bonus info (no prepaidinfo/summary), which parses to an
+	// empty balance. The same call usually succeeds a moment later, so retry a
+	// few times before reporting an empty result.
+	for attempt := 0; ; attempt++ {
+		b, err := c.Dashboard(ctx)
+		if err != nil {
+			return provider.Balance{}, err
+		}
+		bal, err := provider.ParseDashboard(c.providerName(), b)
+		if err != nil {
+			return provider.Balance{}, err
+		}
+		if bal.Balance != nil || bal.Quota != nil || len(bal.PackageQuotas) > 0 {
+			return bal, nil
+		}
+		if attempt >= 2 {
+			return bal, nil
+		}
+		select {
+		case <-ctx.Done():
+			return bal, nil
+		case <-time.After(150 * time.Millisecond):
+		}
 	}
-	return provider.ParseDashboard(c.providerName(), b)
 }
 
 var tokenKeys = []string{"access_token", "accessToken", "tokenId", "tokenid", "token", "sessionId", "secretKey"}

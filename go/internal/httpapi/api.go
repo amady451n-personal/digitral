@@ -356,17 +356,20 @@ func (a *API) stream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
-	ticker := time.NewTicker(a.poll())
-	defer ticker.Stop()
+	w.Header().Set("Cache-Control", "no-cache")
+	// Send headers and the first snapshot now, then every poll interval. A
+	// ticker would delay the first event by a full interval, leaving the UI on
+	// "connecting" and starving proxies until the first tick.
+	flusher.Flush()
 	for {
+		payload := map[string]any{"numbers": a.snapshot(), "ts": time.Now().Unix()}
+		b, _ := json.Marshal(payload)
+		_, _ = fmt.Fprintf(w, "data: %s\n\n", b)
+		flusher.Flush()
 		select {
 		case <-r.Context().Done():
 			return
-		case <-ticker.C:
-			payload := map[string]any{"numbers": a.snapshot(), "ts": time.Now().Unix()}
-			b, _ := json.Marshal(payload)
-			_, _ = fmt.Fprintf(w, "data: %s\n\n", b)
-			flusher.Flush()
+		case <-time.After(a.poll()):
 		}
 	}
 }
