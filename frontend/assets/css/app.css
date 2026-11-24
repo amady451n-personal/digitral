@@ -20,7 +20,7 @@
   --dur-mid: 0.3s;
   --dur-slow: 0.6s;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 
   color-scheme: dark;
 }
@@ -58,8 +58,7 @@ body::before {
   inset: 0;
   z-index: 0;
   background-image: var(--grain);
-  mix-blend-mode: soft-light;
-  opacity: 0.35;
+  opacity: 1;
   pointer-events: none;
 }
 
@@ -243,8 +242,7 @@ p {
   gap: 10px;
   padding: calc(6px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) 6px calc(14px + env(safe-area-inset-left));
   border-bottom: 1px solid var(--line);
-  background: rgb(11 18 32 / 82%);
-  backdrop-filter: blur(14px);
+  background: rgb(11 18 32 / 94%);
 }
 
 .brand {
@@ -437,7 +435,7 @@ p {
 
   position: relative;
   aspect-ratio: 1.62 / 1;
-  overflow: hidden;
+  min-height: 190px;
   border-radius: var(--radius-card);
   box-shadow:
     0 18px 32px -18px rgb(0 0 0 / 85%),
@@ -447,6 +445,8 @@ p {
 .card-face {
   position: absolute;
   inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -614,7 +614,7 @@ p {
 
 .card-caption {
   color: #b8c3d6;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -646,7 +646,7 @@ p {
 .card-stat dt {
   flex-basis: 100%;
   color: #b8c3d6;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -670,7 +670,7 @@ p {
 
 .card-stat .card-used {
   color: #b8c3d6;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -742,6 +742,7 @@ p {
   padding: 0 10px 6px 16px;
   background: #b91c1c;
   clip-path: polygon(0 14px, 100% 0, 100% 100%, 0 100%);
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
   color: #fff;
 }
 
@@ -779,6 +780,7 @@ p {
   color: #fca5a5;
   font-size: 12px;
   font-weight: 600;
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
 }
 
 .card-warn-text {
@@ -950,8 +952,7 @@ p {
 }
 
 .sheet::backdrop {
-  background: rgb(2 6 16 / 68%);
-  backdrop-filter: blur(3px);
+  background: rgb(2 6 16 / 72%);
 }
 
 .sheet[open] {
@@ -1255,6 +1256,59 @@ p {
 
   .sheet-compact {
     max-width: 440px;
+  }
+}
+
+/* ---------- Umpan balik kursor (perangkat ber-pointer) ---------- */
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover {
+    background-color: #5ecbfa;
+    background-color: color-mix(in srgb, var(--accent) 85%, #fff);
+  }
+
+  .btn-quiet:hover {
+    border-color: var(--line-strong);
+    background-color: #26354c;
+  }
+
+  .btn-ghost:hover {
+    background-color: rgb(30 41 59 / 78%);
+  }
+
+  .btn-danger:hover {
+    background-color: #352027;
+  }
+
+  .icon-btn:hover {
+    border-color: var(--line-strong);
+    background-color: rgb(51 65 85 / 85%);
+  }
+
+  .notif-btn[data-enabled="1"]:hover {
+    background-color: rgb(56 189 248 / 20%);
+  }
+
+  .card-menu-btn:hover,
+  .menu-item:hover {
+    background-color: rgb(255 255 255 / 14%);
+  }
+
+  .operator:hover .operator-body {
+    border-color: var(--line-strong);
+  }
+
+  .pill-btn:hover,
+  .warn-btn:hover {
+    background-color: rgb(56 189 248 / 18%);
+  }
+
+  .ribbon-btn:hover {
+    background-color: #fee2e2;
+  }
+
+  .fab:hover {
+    transform: translateX(-50%) translateY(-2px);
   }
 }
 

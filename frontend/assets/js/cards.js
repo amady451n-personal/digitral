@@ -19,6 +19,9 @@ const SELECTOR_ACTION = "[data-action]";
 const nodes = new Map();
 const sections = new Map();
 let handlers = {};
+// Umpan kosong hanya boleh muncul setelah percobaan muat pertama selesai,
+// supaya pengguna yang sudah punya nomor tak melihat "Tambah nomor" sekilas.
+let loaded = false;
 
 const groupsEl = document.getElementById("groups");
 const emptyEl = document.getElementById("empty-state");
@@ -240,8 +243,16 @@ export function render() {
   syncChildren(groupsEl, desired);
   pruneStale(items, groups);
   const hasAny = items.length > 0;
-  emptyEl.hidden = hasAny;
+  emptyEl.hidden = hasAny || !loaded;
   fabEl.hidden = !hasAny;
+}
+
+// Dipanggil sekali setelah percobaan muat pertama (berhasil maupun gagal).
+export function markLoaded() {
+  if (!loaded) {
+    loaded = true;
+    render();
+  }
 }
 
 export function tick() {

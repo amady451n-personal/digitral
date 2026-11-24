@@ -2,7 +2,7 @@
 
 import { ApiError, api, isNetworkError, messageOf, numberPath, onStale } from "./api.js";
 import { withBusy } from "./busy.js";
-import { bindCardActions, render, tick } from "./cards.js";
+import { bindCardActions, markLoaded, render, tick } from "./cards.js";
 import { loadSnapshot, saveSnapshot } from "./offline.js";
 import { initNotif } from "./notif.js";
 import { initPwa } from "./pwa.js";
@@ -194,6 +194,7 @@ function boot() {
   load()
     .catch((error) => showPageError(messageOf(error)))
     .finally(() => {
+      markLoaded();
       startStream({
         onState: setLive,
         onSnapshot: (payload) => {
